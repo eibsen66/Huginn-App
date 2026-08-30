@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Huginn Connectivity Test</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header>
+      <p class="eyebrow">READ-ONLY BROWSER / NETWORK PROOF</p>
+      <h1>HUGINN CONNECTIVITY TEST</h1>
+    </header>
+
+    <section class="context" aria-label="Browser context">
+      <div><span>PAGE ORIGIN</span><output id="page-origin"></output></div>
+      <div><span>SECURE CONTEXT</span><output id="secure-context"></output></div>
+      <div><span>LOCAL TIME</span><output id="local-time"></output></div>
+    </section>
+
+    <section class="actions" aria-label="Huginn API tests">
+      <button id="ping-button" type="button">PING HUGINN</button>
+      <button id="info-button" type="button">GET HUGINN INFO</button>
+      <button id="clear-button" class="secondary" type="button">CLEAR RESULT</button>
+    </section>
+
+    <section class="result-panel" aria-live="polite" aria-label="Test result">
+      <h2 id="result-title">READY</h2>
+      <p id="result-summary">Choose a read-only Huginn API test.</p>
+      <dl id="result-fields" class="result-fields" hidden></dl>
+      <pre id="result-json" hidden></pre>
+      <pre id="result-diagnostics" hidden></pre>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
