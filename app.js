@@ -4,6 +4,14 @@ const HUGINN_API_BASE_URL = "https://192.168.4.1";
 const PING_URL = `${HUGINN_API_BASE_URL}/api/v1/ping`;
 const INFO_URL = `${HUGINN_API_BASE_URL}/api/v1/info`;
 const CONFIG_URL = `${HUGINN_API_BASE_URL}/api/v1/config`;
+const CACHE_KEYS = {
+  info: "huginn.v1.info",
+  config: "huginn.v1.config"
+};
+const INFO_FIELDS = [
+  "product", "api_version", "build_id", "registration", "device_id",
+  "uptime_seconds", "rtc_status", "sd_status", "can_status"
+];
 
 const pageOrigin = document.querySelector("#page-origin");
 const secureContext = document.querySelector("#secure-context");
@@ -16,6 +24,8 @@ const resultDiagnostics = document.querySelector("#result-diagnostics");
 const pingButton = document.querySelector("#ping-button");
 const infoButton = document.querySelector("#info-button");
 const configButton = document.querySelector("#config-button");
+const cachedInfoButton = document.querySelector("#cached-info-button");
+const cachedConfigButton = document.querySelector("#cached-config-button");
 const clearButton = document.querySelector("#clear-button");
 
 function updateBrowserContext() {
@@ -45,6 +55,29 @@ function showFields(data, fields) {
     resultFields.append(term, description);
   }
   resultFields.hidden = false;
+}
+
+function validateInfo(data) {
+  if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("Malformed info response: expected an object");
+  }
+  for (const field of ["product", "build_id", "registration", "device_id",
+    "rtc_status", "sd_status", "can_status"]) {
+    requireInfoField(data, field, "string");
+  }
+  for (const field of ["api_version", "uptime_seconds"]) {
+    requireInfoField(data, field, "number");
+  }
+}
+
+function showInfoFields(data) {
+  showFields(data, INFO_FIELDS);
+}
+
+function requireInfoField(data, field, expectedType) {
+  if (data[field] === undefined || typeof data[field] !== expectedType) {
+    throw new Error(`Malformed info response: ${field} is missing or invalid`);
+  }
 }
 
 function requireConfigField(data, field, expectedType) {
@@ -114,6 +147,89 @@ function showConfigFields(data) {
   showFields(presentation, fields);
 }
 
+function saveCachedResponse(cacheType, data, validator) {
+  try {
+    validator(data);
+    const serialized = JSON.stringify({
+      received_at: new Date().toISOString(),
+      data
+    });
+    localStorage.setItem(CACHE_KEYS[cacheType], serialized);
+  } catch (error) {
+    /* Live display remains authoritative even if browser cache is unavailable. */
+  }
+}
+
+function readCachedResponse(cacheType, validator) {
+  let serialized;
+  let receivedAt;
+  try {
+    serialized = localStorage.getItem(CACHE_KEYS[cacheType]);
+  } catch (error) {
+    throw new Error(`Cache storage unavailable: ${error.message}`);
+  }
+  if (serialized === null) {
+    return null;
+  }
+
+  let envelope;
+  try {
+    envelope = JSON.parse(serialized);
+  } catch (error) {
+    throw new Error(`Cached JSON is invalid: ${error.message}`);
+  }
+  if (envelope === null || typeof envelope !== "object" ||
+    Array.isArray(envelope) ||
+    !Object.prototype.hasOwnProperty.call(envelope, "data")) {
+    throw new Error("Cached response envelope is invalid");
+  }
+  validator(envelope.data);
+  receivedAt = envelope.received_at;
+  return { data: envelope.data, receivedAt };
+}
+
+function cachedTimestamp(receivedAt) {
+  if (typeof receivedAt !== "string" || receivedAt === "") {
+    return "UNKNOWN";
+  }
+  const timestamp = new Date(receivedAt);
+  return Number.isNaN(timestamp.getTime()) ? "UNKNOWN" : timestamp.toLocaleString();
+}
+
+function showCachedFailure(cacheLabel, error) {
+  resultTitle.textContent = `INVALID CACHED HUGINN ${cacheLabel}`;
+  resultSummary.textContent = "OFFLINE / CACHED data could not be used.";
+  resultFields.replaceChildren();
+  resultFields.hidden = true;
+  resultJson.textContent = "";
+  resultJson.hidden = true;
+  resultDiagnostics.textContent = String(error);
+  resultDiagnostics.hidden = false;
+}
+
+function showCachedResponse(cacheType, cacheLabel, validator, showPresentation) {
+  clearResult();
+  let cached;
+  try {
+    cached = readCachedResponse(cacheType, validator);
+  } catch (error) {
+    showCachedFailure(cacheLabel, error);
+    return;
+  }
+  if (cached === null) {
+    resultTitle.textContent = `NO CACHED HUGINN ${cacheLabel}`;
+    resultSummary.textContent = "OFFLINE / CACHED: no saved response is available.";
+    return;
+  }
+
+  resultTitle.textContent = `CACHED HUGINN ${cacheLabel}`;
+  resultSummary.textContent =
+    `OFFLINE / CACHED\nLast synchronized: ${cachedTimestamp(cached.receivedAt)}`;
+  showPresentation(cached.data);
+  resultJson.textContent = JSON.stringify(cached.data, null, 2);
+  resultJson.hidden = false;
+}
+
 function showFailure(error, targetUrl) {
   resultTitle.textContent = "CONNECTION FAILED";
   resultSummary.textContent =
@@ -155,6 +271,9 @@ async function requestHuginn(targetUrl, infoResponse, configResponse = false) {
       throw new Error(`Huginn returned HTTP ${response.status}`);
     }
 
+    if (infoResponse) {
+      validateInfo(data);
+    }
     if (configResponse) {
       validateConfig(data);
     }
@@ -163,13 +282,12 @@ async function requestHuginn(targetUrl, infoResponse, configResponse = false) {
       ? "CONNECTED TO HUGINN" : "CONNECTED";
     resultSummary.textContent = `HTTP ${response.status} · ${elapsedMilliseconds} ms`;
     if (infoResponse) {
-      showFields(data, [
-        "product", "api_version", "build_id", "registration", "device_id",
-        "uptime_seconds", "rtc_status", "sd_status", "can_status"
-      ]);
+      showInfoFields(data);
+      saveCachedResponse("info", data, validateInfo);
     }
     if (configResponse) {
       showConfigFields(data);
+      saveCachedResponse("config", data, validateConfig);
     }
     resultJson.textContent = JSON.stringify(data, null, 2);
     resultJson.hidden = false;
@@ -181,6 +299,10 @@ async function requestHuginn(targetUrl, infoResponse, configResponse = false) {
 pingButton.addEventListener("click", () => requestHuginn(PING_URL, false));
 infoButton.addEventListener("click", () => requestHuginn(INFO_URL, true));
 configButton.addEventListener("click", () => requestHuginn(CONFIG_URL, false, true));
+cachedInfoButton.addEventListener("click", () =>
+  showCachedResponse("info", "INFO", validateInfo, showInfoFields));
+cachedConfigButton.addEventListener("click", () =>
+  showCachedResponse("config", "CONFIG", validateConfig, showConfigFields));
 clearButton.addEventListener("click", clearResult);
 
 updateBrowserContext();
