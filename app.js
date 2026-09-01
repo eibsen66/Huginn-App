@@ -1,6 +1,6 @@
 "use strict";
 
-const HUGINN_API_BASE_URL = "http://192.168.4.1";
+const HUGINN_API_BASE_URL = "https://192.168.4.1";
 const PING_URL = `${HUGINN_API_BASE_URL}/api/v1/ping`;
 const INFO_URL = `${HUGINN_API_BASE_URL}/api/v1/info`;
 
