@@ -1,0 +1,40 @@
+# Local browser/tooling output; this static PoC has no generated build step
+node_modules/
+dist/
+build/
+.cache/
+.vscode/settings.json
+*.log
+*.tmp
+Thumbs.db
+.DS_Store
+
+# Device evidence, exports and local backups are not application source
+local-data/
+captures/
+backups/
+exports/
+*.bin
+*.dump
+*.dmp
+*.canlog
+*.asc
+*.blf
+*.mf4
+*.pcap
+*.pcapng
+*.bak
+
+# Local credentials and trust material
+.env
+.env.*
+credentials/
+secrets/
+*.pem
+*.key
+*.pfx
+*.p12
+*.crt
+*.cer
+*.csr
+*.der
