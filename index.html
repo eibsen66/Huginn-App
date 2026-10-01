@@ -26,6 +26,9 @@
       <button id="config-button" type="button">GET HUGINN CONFIG</button>
       <button id="cached-info-button" class="secondary" type="button">SHOW CACHED INFO</button>
       <button id="cached-config-button" class="secondary" type="button">SHOW CACHED CONFIG</button>
+      <button id="settings-import-button" class="secondary" type="button">IMPORT HUGINN SETTINGS FILE</button>
+      <input id="settings-file-input" type="file" accept=".JSN,.jsn,application/json" hidden>
+      <button id="settings-verify-button" class="secondary" type="button">VERIFY WITH HUGINNEIS</button>
       <button id="clear-button" class="secondary" type="button">CLEAR RESULT</button>
     </section>
 
@@ -37,6 +40,6 @@
       <pre id="result-diagnostics" hidden></pre>
     </section>
   </main>
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

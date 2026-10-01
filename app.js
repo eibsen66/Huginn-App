@@ -1,9 +1,18 @@
 "use strict";
 
+import {
+  SettingsPackageError,
+  loadLatestPendingPackage,
+  markDeviceVerified,
+  receiveSettingsPackage
+} from "./settings-package.mjs";
+
 const HUGINN_API_BASE_URL = "https://192.168.4.1";
 const PING_URL = `${HUGINN_API_BASE_URL}/api/v1/ping`;
 const INFO_URL = `${HUGINN_API_BASE_URL}/api/v1/info`;
 const CONFIG_URL = `${HUGINN_API_BASE_URL}/api/v1/config`;
+const SETTINGS_TRANSFER_VERIFY_URL =
+  `${HUGINN_API_BASE_URL}/api/v1/settings-transfer/verify`;
 const CACHE_KEYS = {
   info: "huginn.v1.info",
   config: "huginn.v1.config"
@@ -26,6 +35,9 @@ const infoButton = document.querySelector("#info-button");
 const configButton = document.querySelector("#config-button");
 const cachedInfoButton = document.querySelector("#cached-info-button");
 const cachedConfigButton = document.querySelector("#cached-config-button");
+const settingsImportButton = document.querySelector("#settings-import-button");
+const settingsFileInput = document.querySelector("#settings-file-input");
+const settingsVerifyButton = document.querySelector("#settings-verify-button");
 const clearButton = document.querySelector("#clear-button");
 
 function updateBrowserContext() {
@@ -55,6 +67,112 @@ function showFields(data, fields) {
     resultFields.append(term, description);
   }
   resultFields.hidden = false;
+}
+
+function showStoredSettingsPackage(stored) {
+  const settings = stored.package.settings;
+  const fuel = settings.fuel;
+  const fields = {
+    "Source": stored.metadata.source_product,
+    "Created (UTC)": stored.metadata.created_at_utc,
+    "Status": stored.metadata.device_verified
+      ? "Verified by HuginnEIS — not applied"
+      : "Verified — pending transfer to HuginnEIS",
+    "Brightness": `${settings.display.brightness_percent}%`,
+    "Auto brightness": settings.display.auto_brightness ? "On" : "Off",
+    "Units": Object.entries(settings.display.units).map(([name, value]) => `${name}: ${value}`).join(", "),
+    "Fuel presets": fuel.presets.map((preset) =>
+      `${preset.label} (RON ${preset.ron}, ${preset.is_avgas ? "AVGAS" : `E${preset.ethanol_percent}`})`).join("; "),
+    "Default fuel preset": fuel.presets[fuel.default_preset_index].label
+  };
+  resultTitle.textContent = "HUGINN SETTINGS FILE VERIFIED";
+  resultSummary.textContent = "Stored locally and pending transfer to HuginnEIS.";
+  showFields(fields, Object.keys(fields));
+  resultJson.textContent = "";
+  resultJson.hidden = true;
+  resultDiagnostics.textContent = "";
+  resultDiagnostics.hidden = true;
+}
+
+function verifyDeviceResponse(response, stored) {
+  if (response === null || typeof response !== "object" || response.ok !== true ||
+      response.schema !== "huginn.settings-transfer" || response.schema_version !== 1 ||
+      response.sha256 !== stored.package.integrity.sha256 ||
+      response.canonical_bytes !== stored.package.integrity.canonical_bytes) {
+    throw new SettingsPackageError("HuginnEIS verification response does not match the stored package");
+  }
+}
+
+async function verifyPendingSettingsPackageWithHuginnEis() {
+  clearResult();
+  resultTitle.textContent = "VERIFYING WITH HUGINNEIS";
+  try {
+    const stored = await loadLatestPendingPackage(window.localStorage);
+    if (stored === null) {
+      throw new SettingsPackageError("No verified pending Huginn settings file is stored locally");
+    }
+    const response = await fetch(SETTINGS_TRANSFER_VERIFY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: stored.originalBytes,
+      cache: "no-store"
+    });
+    let payload;
+    try {
+      payload = await response.json();
+    } catch (error) {
+      throw new SettingsPackageError("HuginnEIS returned an invalid verification response");
+    }
+    if (!response.ok) {
+      throw new SettingsPackageError(`HuginnEIS rejected the package: ${payload?.error ?? "unknown"}`);
+    }
+    verifyDeviceResponse(payload, stored);
+    showStoredSettingsPackage(await markDeviceVerified(
+      window.localStorage, stored.local_id, stored.package.integrity.sha256));
+  } catch (error) {
+    resultTitle.textContent = "HUGINNEIS VERIFICATION NOT CONFIRMED";
+    resultSummary.textContent = "The verified package remains pending and was not applied.";
+    resultFields.replaceChildren();
+    resultFields.hidden = true;
+    resultJson.textContent = "";
+    resultJson.hidden = true;
+    resultDiagnostics.textContent = error instanceof SettingsPackageError ? error.message : String(error);
+    resultDiagnostics.hidden = false;
+  }
+}
+
+function showSettingsImportFailure(error) {
+  resultTitle.textContent = "HUGINN SETTINGS FILE NOT ACCEPTED";
+  resultSummary.textContent = "The file was not stored and is not pending transfer.";
+  resultFields.replaceChildren();
+  resultFields.hidden = true;
+  resultJson.textContent = "";
+  resultJson.hidden = true;
+  resultDiagnostics.textContent = error instanceof SettingsPackageError ? error.message : String(error);
+  resultDiagnostics.hidden = false;
+}
+
+async function importSettingsFile(file) {
+  clearResult();
+  resultTitle.textContent = "VERIFYING HUGINN SETTINGS FILE";
+  resultSummary.textContent = file.name;
+  try {
+    const stored = await receiveSettingsPackage(new Uint8Array(await file.arrayBuffer()), window.localStorage);
+    showStoredSettingsPackage(stored);
+  } catch (error) {
+    showSettingsImportFailure(error);
+  }
+}
+
+async function showStoredPendingSettingsPackage() {
+  try {
+    const stored = await loadLatestPendingPackage(window.localStorage);
+    if (stored !== null) {
+      showStoredSettingsPackage(stored);
+    }
+  } catch (error) {
+    showSettingsImportFailure(error);
+  }
 }
 
 function validateInfo(data) {
@@ -231,10 +349,10 @@ function showCachedResponse(cacheType, cacheLabel, validator, showPresentation) 
 }
 
 function showFailure(error, targetUrl) {
-  resultTitle.textContent = "CONNECTION FAILED";
+  resultTitle.textContent = "HUGINNEIS NOT CONNECTED";
   resultSummary.textContent =
-    "The browser blocked or failed the HTTPS page -> local HTTP Huginn request. " +
-    "The exact browser error shown below is the important PoC result.";
+    "Live HuginnEIS access is unavailable. Importing a Huginn settings file remains available. " +
+    "The technical connection diagnostic is shown below.";
   resultFields.replaceChildren();
   resultFields.hidden = true;
   resultJson.hidden = true;
@@ -303,7 +421,17 @@ cachedInfoButton.addEventListener("click", () =>
   showCachedResponse("info", "INFO", validateInfo, showInfoFields));
 cachedConfigButton.addEventListener("click", () =>
   showCachedResponse("config", "CONFIG", validateConfig, showConfigFields));
+settingsImportButton.addEventListener("click", () => settingsFileInput.click());
+settingsFileInput.addEventListener("change", async () => {
+  const [file] = settingsFileInput.files;
+  settingsFileInput.value = "";
+  if (file) {
+    await importSettingsFile(file);
+  }
+});
+settingsVerifyButton.addEventListener("click", () => void verifyPendingSettingsPackageWithHuginnEis());
 clearButton.addEventListener("click", clearResult);
 
 updateBrowserContext();
 window.setInterval(updateBrowserContext, 1000);
+void showStoredPendingSettingsPackage();

@@ -18,9 +18,14 @@ git rev-parse HEAD
 Start-Process .\index.html
 ```
 
-There is no compilation, npm installation or package manifest. `index.html`,
-`app.js` and `style.css` are the complete static application source. Optional
-syntax check, if Node.js is already available: `node --check .\app.js`.
+There is no compilation or npm installation. `index.html`, `app.js`,
+`settings-package.mjs` and `style.css` are the complete static application
+source. Optional offline checks, if Node.js is already available:
+
+```powershell
+node --test .\tests\settings-package.test.mjs
+node --check .\settings-package.mjs
+```
 
 The PoC retrieves Info and Config using read-only HTTPS GET requests and provides
 explicit cached views. Live retrieval requires reachable Huginn HTTPS service and
