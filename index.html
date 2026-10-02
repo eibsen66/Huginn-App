@@ -10,7 +10,7 @@
 <body>
   <main class="app-shell">
     <header>
-      <p class="eyebrow">READ-ONLY BROWSER / NETWORK PROOF</p>
+      <p class="eyebrow">DEV SETTINGS TRANSFER COURIER</p>
       <h1>HUGINN CONNECTIVITY TEST</h1>
     </header>
 
@@ -26,9 +26,12 @@
       <button id="config-button" type="button">GET HUGINN CONFIG</button>
       <button id="cached-info-button" class="secondary" type="button">SHOW CACHED INFO</button>
       <button id="cached-config-button" class="secondary" type="button">SHOW CACHED CONFIG</button>
-      <button id="settings-import-button" class="secondary" type="button">IMPORT HUGINN SETTINGS FILE</button>
+      <button id="settings-import-button" class="secondary" type="button">Import Huginn settings file</button>
       <input id="settings-file-input" type="file" accept=".JSN,.jsn,application/json" hidden>
-      <button id="settings-verify-button" class="secondary" type="button">VERIFY WITH HUGINNEIS</button>
+      <button id="settings-verify-button" class="secondary" type="button">Verify with HuginnEIS</button>
+      <button id="settings-preview-button" class="secondary" type="button" disabled>Preview settings changes</button>
+      <button id="settings-apply-button" type="button" hidden disabled>Apply settings to HuginnEIS</button>
+      <button id="settings-preview-cancel-button" class="secondary" type="button" hidden>CANCEL</button>
       <button id="clear-button" class="secondary" type="button">CLEAR RESULT</button>
     </section>
 
@@ -40,6 +43,15 @@
       <pre id="result-diagnostics" hidden></pre>
     </section>
   </main>
+  <dialog id="settings-apply-confirmation" aria-labelledby="settings-apply-confirmation-title">
+    <h2 id="settings-apply-confirmation-title">Confirm settings apply</h2>
+    <p>Apply these device-previewed settings changes to HuginnEIS?</p>
+    <dl id="settings-apply-confirmation-changes" class="result-fields"></dl>
+    <form method="dialog" class="dialog-actions">
+      <button class="secondary" type="submit">CANCEL</button>
+      <button id="settings-apply-confirmation-button" type="button">Apply settings</button>
+    </form>
+  </dialog>
   <script type="module" src="app.js"></script>
 </body>
 </html>

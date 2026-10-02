@@ -237,7 +237,8 @@ export async function receiveSettingsPackage(rawBytes, storage, now = new Date()
       schema_version: verified.package.schema_version,
       source_product: verified.package.provenance.product,
       created_at_utc: verified.createdAt,
-      covered_sha256: verified.package.integrity.sha256
+      covered_sha256: verified.package.integrity.sha256,
+      device_applied: false
     },
     package_bytes_base64: bytesToBase64(verified.originalBytes)
   };
@@ -302,6 +303,42 @@ export async function markDeviceVerified(storage, localId, sha256, now = new Dat
     storage.setItem(SETTINGS_PACKAGE_STORAGE_KEY, JSON.stringify(next));
   } catch (error) {
     fail("could not store device verification metadata locally");
+  }
+  return { ...updated, originalBytes, package: verified.package };
+}
+
+export async function markDeviceApplied(storage, localId, sha256, now = new Date()) {
+  const records = readRecords(storage);
+  const index = records.findIndex((record) => record?.local_id === localId);
+  if (index === -1) {
+    fail("stored package record is unavailable");
+  }
+  const current = records[index];
+  let originalBytes;
+  try {
+    originalBytes = base64ToBytes(current.package_bytes_base64);
+  } catch (error) {
+    fail("stored package bytes are invalid");
+  }
+  const verified = await verifySettingsPackage(originalBytes);
+  if (verified.package.integrity.sha256 !== sha256) {
+    fail("device apply identity does not match the stored package");
+  }
+  const updated = {
+    ...current,
+    metadata: {
+      ...current.metadata,
+      device_applied: true,
+      device_applied_at: now.toISOString(),
+      device_applied_sha256: sha256
+    }
+  };
+  const next = [...records];
+  next[index] = updated;
+  try {
+    storage.setItem(SETTINGS_PACKAGE_STORAGE_KEY, JSON.stringify(next));
+  } catch (error) {
+    fail("could not store device apply metadata locally");
   }
   return { ...updated, originalBytes, package: verified.package };
 }

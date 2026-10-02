@@ -28,11 +28,17 @@ node --check .\settings-package.mjs
 ```
 
 The PoC retrieves Info and Config using read-only HTTPS GET requests and provides
-explicit cached views. Live retrieval requires reachable Huginn HTTPS service and
-appropriate browser certificate/network permissions. Those device interactions
-were not tested during source recovery. Opening the local UI does not establish
-live connectivity. Browser-local cache and device credentials are not Git assets
-and are not restored by cloning.
+explicit cached views. It can also courier a locally verified Settings Transfer V1
+file to the DEV HuginnEIS: verify with the device, preview device-computed changes,
+then explicitly confirm apply. Preview and apply send the stored original bytes
+without regenerating package JSON; only browser-local apply metadata is recorded
+after device-confirmed success.
+
+Live retrieval and DEV settings transfer require reachable Huginn HTTPS service,
+the DEV root certificate trusted by the browser, and appropriate Wi-Fi permissions.
+Opening the local UI does not establish live connectivity. Browser-local cache,
+package storage, and device credentials are not Git assets and are not restored by
+cloning.
 
 The combined EIS/App/Muninn Windows procedure is maintained in
 [Muninn RESTORE.md](https://github.com/eibsen66/Muninn/blob/main/RESTORE.md).

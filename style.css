@@ -67,6 +67,18 @@ button.secondary { background: #263c42; color: #e9f3f1; }
 pre { overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 0.8rem; border-radius: 0.45rem; background: #02090c; color: #d8e8e5; font-size: 0.8rem; line-height: 1.45; }
 #result-diagnostics { color: #ffbfaa; }
 
+dialog {
+  width: min(calc(100% - 2rem), 40rem);
+  border: 1px solid #31535a;
+  border-radius: 0.75rem;
+  background: #071015;
+  color: #e9f3f1;
+  padding: 1.25rem;
+}
+dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
+.dialog-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
+.dialog-actions button { padding: 0 1rem; }
+
 @media (min-width: 38rem) {
   .actions { grid-template-columns: 1fr 1fr 0.7fr; }
 }

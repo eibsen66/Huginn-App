@@ -6,6 +6,7 @@ import {
   SETTINGS_PACKAGE_STORAGE_KEY,
   canonicalBytes,
   loadLatestPendingPackage,
+  markDeviceApplied,
   markDeviceVerified,
   receiveSettingsPackage,
   verifySettingsPackage
@@ -139,6 +140,7 @@ test("invalid package is not marked pending", async () => {
 test("verified package is marked pending", async () => {
   const stored = await receiveSettingsPackage(await validPackage(), new MemoryStorage());
   assert.equal(stored.metadata.status, "pending");
+  assert.equal(stored.metadata.device_applied, false);
 });
 
 test("restart reloads the verified pending package", async () => {
@@ -166,7 +168,7 @@ test("live configuration failure leaves the package import control available", a
   const appSource = await source("app.js");
   const failureView = functionBody(appSource, "showFailure");
   assert.match(appSource, /settingsImportButton\.addEventListener/);
-  assert.match(failureView, /HUGINNEIS NOT CONNECTED/);
+  assert.match(failureView, /HuginnEIS not connected/);
   assert.doesNotMatch(failureView, /settingsImportButton|settingsFileInput/);
 });
 
@@ -194,10 +196,10 @@ test("reload remains local while live connection is unavailable", async () => {
   }
 });
 
-test("courier module contains no relay, apply, device, or network action", async () => {
+test("courier module contains no device network action", async () => {
   const courierSource = await source("settings-package.mjs");
   assert.doesNotMatch(courierSource,
-    /\b(fetch|XMLHttpRequest|WebSocket|sendBeacon|relay|apply|NVS|HFS2|CAN)\b/i);
+    /\b(fetch|XMLHttpRequest|WebSocket|sendBeacon|relay|NVS|HFS2|CAN)\b/i);
 });
 
 test("device hash mismatch does not mark local metadata verified", async () => {
@@ -223,4 +225,72 @@ test("app relay posts the exact stored bytes and never applies settings", async 
   assert.match(relay, /body: stored\.originalBytes/);
   assert.match(relay, /loadLatestPendingPackage/);
   assert.doesNotMatch(relay, /apply|nvs|CAN|HFS2|AIR_STATE/i);
+});
+
+test("successful device apply updates metadata only and preserves exact bytes", async () => {
+  const storage = new MemoryStorage();
+  const raw = await validPackage();
+  const stored = await receiveSettingsPackage(raw, storage);
+  const applied = await markDeviceApplied(storage, stored.local_id,
+    stored.package.integrity.sha256, new Date("2026-10-02T13:00:00Z"));
+  assert.equal(applied.metadata.device_applied, true);
+  assert.equal(applied.metadata.device_applied_sha256, stored.package.integrity.sha256);
+  assert.deepEqual(applied.originalBytes, raw);
+  assert.deepEqual((await loadLatestPendingPackage(storage)).originalBytes, raw);
+});
+
+test("failed device apply identity does not mark metadata", async () => {
+  const storage = new MemoryStorage();
+  const stored = await receiveSettingsPackage(await validPackage(), storage);
+  await assert.rejects(() => markDeviceApplied(storage, stored.local_id, "0".repeat(64)));
+  assert.equal((await loadLatestPendingPackage(storage)).metadata.device_applied, false);
+});
+
+test("preview and apply reload, locally verify, and post exact stored bytes", async () => {
+  const appSource = await source("app.js");
+  const post = functionBody(appSource, "postStoredSettingsPackage");
+  const preview = functionBody(appSource, "previewPendingSettingsPackageWithHuginnEis");
+  const apply = functionBody(appSource, "applyPreviewedSettingsPackageToHuginnEis");
+  assert.match(post, /verifySettingsPackage\(stored\.originalBytes\)/);
+  assert.match(post, /body: stored\.originalBytes/);
+  assert.match(preview, /SETTINGS_TRANSFER_PREVIEW_URL/);
+  assert.match(apply, /SETTINGS_TRANSFER_APPLY_URL/);
+  assert.match(apply, /markDeviceApplied/);
+  assert.match(apply, /response\.applied !== true/);
+  assert.match(apply, /previewMatchesApply/);
+});
+
+test("preview validates identity and handles zero-diff without an apply request", async () => {
+  const appSource = await source("app.js");
+  const preview = functionBody(appSource, "showSettingsPreview");
+  const responseValidation = functionBody(appSource, "verifyDeviceResponse");
+  assert.match(responseValidation, /sha256 !== stored\.package\.integrity\.sha256/);
+  assert.match(responseValidation, /canonical_bytes !== stored\.package\.integrity\.canonical_bytes/);
+  assert.match(preview, /response\.changes\.length === 0/);
+  assert.match(preview, /NO SETTINGS CHANGES REQUIRED/);
+  assert.match(preview, /settingsApplyButton\.disabled = true/);
+  assert.doesNotMatch(preview, /SETTINGS_TRANSFER_APPLY_URL/);
+});
+
+test("apply confirmation is explicit and cancel has no apply action", async () => {
+  const [appSource, htmlSource] = await Promise.all([source("app.js"), source("index.html")]);
+  const confirmation = functionBody(appSource, "openSettingsApplyConfirmation");
+  assert.match(confirmation, /showModal\(\)/);
+  assert.match(htmlSource, /id="settings-apply-confirmation"/);
+  assert.match(htmlSource, /method="dialog"/);
+  assert.match(htmlSource, />CANCEL</);
+  assert.match(htmlSource, />Apply settings</);
+});
+
+test("friendly change labels and failure categories remain client-only presentation", async () => {
+  const appSource = await source("app.js");
+  const fields = functionBody(appSource, "friendlySettingsField");
+  const failure = functionBody(appSource, "showSettingsTransferFailure");
+  const deviceFailure = functionBody(appSource, "deviceTransferFailureMessage");
+  assert.match(fields, /Speed unit/);
+  assert.match(fields, /Fuel preset/);
+  assert.match(deviceFailure, /SETTINGS_MODAL_ACTIVE/);
+  assert.match(deviceFailure, /APPLY_TIMEOUT/);
+  assert.match(appSource, /was not marked applied/);
+  assert.match(failure, /resultDiagnostics/);
 });

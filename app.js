@@ -3,8 +3,10 @@
 import {
   SettingsPackageError,
   loadLatestPendingPackage,
+  markDeviceApplied,
   markDeviceVerified,
-  receiveSettingsPackage
+  receiveSettingsPackage,
+  verifySettingsPackage
 } from "./settings-package.mjs";
 
 const HUGINN_API_BASE_URL = "https://192.168.4.1";
@@ -13,6 +15,10 @@ const INFO_URL = `${HUGINN_API_BASE_URL}/api/v1/info`;
 const CONFIG_URL = `${HUGINN_API_BASE_URL}/api/v1/config`;
 const SETTINGS_TRANSFER_VERIFY_URL =
   `${HUGINN_API_BASE_URL}/api/v1/settings-transfer/verify`;
+const SETTINGS_TRANSFER_PREVIEW_URL =
+  `${HUGINN_API_BASE_URL}/api/v1/settings-transfer/preview`;
+const SETTINGS_TRANSFER_APPLY_URL =
+  `${HUGINN_API_BASE_URL}/api/v1/settings-transfer/apply`;
 const CACHE_KEYS = {
   info: "huginn.v1.info",
   config: "huginn.v1.config"
@@ -38,7 +44,15 @@ const cachedConfigButton = document.querySelector("#cached-config-button");
 const settingsImportButton = document.querySelector("#settings-import-button");
 const settingsFileInput = document.querySelector("#settings-file-input");
 const settingsVerifyButton = document.querySelector("#settings-verify-button");
+const settingsPreviewButton = document.querySelector("#settings-preview-button");
+const settingsApplyButton = document.querySelector("#settings-apply-button");
+const settingsPreviewCancelButton = document.querySelector("#settings-preview-cancel-button");
+const settingsApplyConfirmation = document.querySelector("#settings-apply-confirmation");
+const settingsApplyConfirmationChanges = document.querySelector("#settings-apply-confirmation-changes");
+const settingsApplyConfirmationButton = document.querySelector("#settings-apply-confirmation-button");
 const clearButton = document.querySelector("#clear-button");
+
+let pendingSettingsPreview = null;
 
 function updateBrowserContext() {
   pageOrigin.textContent = window.location.origin;
@@ -55,6 +69,10 @@ function clearResult() {
   resultJson.hidden = true;
   resultDiagnostics.textContent = "";
   resultDiagnostics.hidden = true;
+  pendingSettingsPreview = null;
+  settingsApplyButton.hidden = true;
+  settingsApplyButton.disabled = true;
+  settingsPreviewCancelButton.hidden = true;
 }
 
 function showFields(data, fields) {
@@ -75,7 +93,9 @@ function showStoredSettingsPackage(stored) {
   const fields = {
     "Source": stored.metadata.source_product,
     "Created (UTC)": stored.metadata.created_at_utc,
-    "Status": stored.metadata.device_verified
+    "Status": stored.metadata.device_applied
+      ? "Applied to HuginnEIS"
+      : stored.metadata.device_verified
       ? "Verified by HuginnEIS — not applied"
       : "Verified — pending transfer to HuginnEIS",
     "Brightness": `${settings.display.brightness_percent}%`,
@@ -86,12 +106,19 @@ function showStoredSettingsPackage(stored) {
     "Default fuel preset": fuel.presets[fuel.default_preset_index].label
   };
   resultTitle.textContent = "HUGINN SETTINGS FILE VERIFIED";
-  resultSummary.textContent = "Stored locally and pending transfer to HuginnEIS.";
+  resultSummary.textContent = stored.metadata.device_applied
+    ? "Stored locally; device application was confirmed."
+    : "Stored locally and pending transfer to HuginnEIS.";
   showFields(fields, Object.keys(fields));
   resultJson.textContent = "";
   resultJson.hidden = true;
   resultDiagnostics.textContent = "";
   resultDiagnostics.hidden = true;
+  pendingSettingsPreview = null;
+  settingsPreviewButton.disabled = !stored.metadata.device_verified;
+  settingsApplyButton.hidden = true;
+  settingsApplyButton.disabled = true;
+  settingsPreviewCancelButton.hidden = true;
 }
 
 function verifyDeviceResponse(response, stored) {
@@ -103,9 +130,231 @@ function verifyDeviceResponse(response, stored) {
   }
 }
 
+function verifyDeviceChanges(response) {
+  if (!Array.isArray(response?.changes)) {
+    throw new SettingsPackageError("HuginnEIS response does not contain a valid change list");
+  }
+  for (const change of response.changes) {
+    if (change === null || typeof change !== "object" || Array.isArray(change) ||
+        typeof change.field !== "string" ||
+        !Object.prototype.hasOwnProperty.call(change, "current") ||
+        !Object.prototype.hasOwnProperty.call(change, "proposed")) {
+      throw new SettingsPackageError("HuginnEIS response contains an invalid settings change");
+    }
+  }
+}
+
+function deviceTransferFailureMessage(category) {
+  const messages = {
+    "SETTINGS_MODAL_ACTIVE": "Close the Settings dialog on HuginnEIS, then preview again.",
+    "AUTHORITY_UNAVAILABLE": "HuginnEIS settings authority is unavailable.",
+    "PERSIST_FAILED": "HuginnEIS could not save the settings changes.",
+    "READBACK_FAILED": "HuginnEIS could not verify the saved settings changes.",
+    "QUEUE_FAILED": "HuginnEIS could not queue the settings change.",
+    "APPLY_TIMEOUT": "HuginnEIS apply timed out; preview again before retrying."
+  };
+  return messages[category] ?? "HuginnEIS did not accept the settings package.";
+}
+
+async function loadDeviceVerifiedSettingsPackage() {
+  const stored = await loadLatestPendingPackage(window.localStorage);
+  if (stored === null || !stored.metadata.device_verified ||
+      stored.metadata.device_verified_sha256 !== stored.package.integrity.sha256) {
+    throw new SettingsPackageError("Verify this Huginn settings file with HuginnEIS before previewing changes");
+  }
+  const verified = await verifySettingsPackage(stored.originalBytes);
+  return { ...stored, originalBytes: stored.originalBytes, package: verified.package };
+}
+
+async function postStoredSettingsPackage(url, stored, action) {
+  const verified = await verifySettingsPackage(stored.originalBytes);
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: stored.originalBytes,
+    cache: "no-store"
+  });
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (error) {
+    throw new SettingsPackageError(`HuginnEIS returned an invalid ${action} response`);
+  }
+  if (!response.ok || payload?.ok !== true) {
+    const category = payload?.error ?? payload?.reason ?? "unknown";
+    throw new SettingsPackageError(
+      `HuginnEIS ${action} was not accepted (${category}): ${deviceTransferFailureMessage(category)}`);
+  }
+  verifyDeviceResponse(payload, { ...stored, package: verified.package });
+  verifyDeviceChanges(payload);
+  return payload;
+}
+
+function friendlySettingsField(field) {
+  const names = {
+    "display.brightness_percent": "Brightness",
+    "display.auto_brightness": "Auto brightness",
+    "display.units.altitude": "Altitude unit",
+    "display.units.baro": "Barometer unit",
+    "display.units.fuel": "Fuel unit",
+    "display.units.pressure": "Pressure unit",
+    "display.units.speed": "Speed unit",
+    "display.units.temperature": "Temperature unit",
+    "fuel.default_preset_index": "Default fuel preset"
+  };
+  if (names[field]) {
+    return names[field];
+  }
+  const preset = /^fuel\.presets\[(\d+)\]\.(ethanol_percent|is_avgas|label|ron)$/.exec(field);
+  if (preset) {
+    return `Fuel preset ${Number(preset[1]) + 1} ${preset[2].replaceAll("_", " ")}`;
+  }
+  return field;
+}
+
+function friendlySettingsValue(value) {
+  return typeof value === "boolean" ? (value ? "On" : "Off") : String(value);
+}
+
+function settingsChangesFields(changes) {
+  const fields = {};
+  for (const change of changes) {
+    fields[friendlySettingsField(change.field)] =
+      `${friendlySettingsValue(change.current)} → ${friendlySettingsValue(change.proposed)}`;
+  }
+  return fields;
+}
+
+function showSettingsPreview(stored, response) {
+  pendingSettingsPreview = {
+    localId: stored.local_id,
+    sha256: stored.package.integrity.sha256,
+    changes: response.changes
+  };
+  resultFields.replaceChildren();
+  resultJson.textContent = "";
+  resultJson.hidden = true;
+  resultDiagnostics.textContent = "";
+  resultDiagnostics.hidden = true;
+  if (response.changes.length === 0) {
+    resultTitle.textContent = "NO SETTINGS CHANGES REQUIRED";
+    resultSummary.textContent = "HuginnEIS already matches this settings file.";
+    resultFields.hidden = true;
+    settingsApplyButton.hidden = true;
+    settingsApplyButton.disabled = true;
+    settingsPreviewCancelButton.hidden = true;
+    return;
+  }
+
+  resultTitle.textContent = "SETTINGS CHANGES";
+  resultSummary.textContent = "Device-computed changes. Review before applying.";
+  const fields = settingsChangesFields(response.changes);
+  showFields(fields, Object.keys(fields));
+  settingsApplyButton.hidden = false;
+  settingsApplyButton.disabled = false;
+  settingsPreviewCancelButton.hidden = false;
+}
+
+function showSettingsTransferFailure(title, summary, error) {
+  pendingSettingsPreview = null;
+  settingsApplyButton.hidden = true;
+  settingsApplyButton.disabled = true;
+  settingsPreviewCancelButton.hidden = true;
+  resultTitle.textContent = title;
+  resultSummary.textContent = summary;
+  resultFields.replaceChildren();
+  resultFields.hidden = true;
+  resultJson.textContent = "";
+  resultJson.hidden = true;
+  resultDiagnostics.textContent = error instanceof SettingsPackageError
+    ? error.message : String(error);
+  resultDiagnostics.hidden = false;
+}
+
+async function previewPendingSettingsPackageWithHuginnEis() {
+  clearResult();
+  resultTitle.textContent = "PREVIEWING SETTINGS CHANGES";
+  try {
+    const stored = await loadDeviceVerifiedSettingsPackage();
+    const response = await postStoredSettingsPackage(
+      SETTINGS_TRANSFER_PREVIEW_URL, stored, "preview");
+    showSettingsPreview(stored, response);
+  } catch (error) {
+    showSettingsTransferFailure(
+      "SETTINGS PREVIEW NOT CONFIRMED",
+      "The stored settings file was not applied.",
+      error);
+  }
+}
+
+function previewMatchesApply(previewChanges, applyChanges) {
+  if (previewChanges.length !== applyChanges.length) {
+    return false;
+  }
+  const applied = new Map(applyChanges.map((change) => [
+    `${change.field}\u0000${JSON.stringify(change.proposed)}`, true
+  ]));
+  return previewChanges.every((change) => applied.has(
+    `${change.field}\u0000${JSON.stringify(change.proposed)}`));
+}
+
+function openSettingsApplyConfirmation() {
+  if (pendingSettingsPreview === null || pendingSettingsPreview.changes.length === 0) {
+    return;
+  }
+  settingsApplyConfirmationChanges.replaceChildren();
+  const fields = settingsChangesFields(pendingSettingsPreview.changes);
+  for (const [field, value] of Object.entries(fields)) {
+    const term = document.createElement("dt");
+    const description = document.createElement("dd");
+    term.textContent = field;
+    description.textContent = value;
+    settingsApplyConfirmationChanges.append(term, description);
+  }
+  settingsApplyConfirmation.showModal();
+}
+
+async function applyPreviewedSettingsPackageToHuginnEis() {
+  const preview = pendingSettingsPreview;
+  if (preview === null || preview.changes.length === 0) {
+    return;
+  }
+  settingsApplyConfirmation.close();
+  settingsApplyButton.hidden = true;
+  settingsApplyButton.disabled = true;
+  settingsPreviewCancelButton.hidden = true;
+  clearResult();
+  resultTitle.textContent = "Applying settings to HuginnEIS";
+  try {
+    const stored = await loadDeviceVerifiedSettingsPackage();
+    if (stored.local_id !== preview.localId ||
+        stored.package.integrity.sha256 !== preview.sha256) {
+      throw new SettingsPackageError("Stored package changed; preview again before applying");
+    }
+    const response = await postStoredSettingsPackage(
+      SETTINGS_TRANSFER_APPLY_URL, stored, "apply");
+    if (response.applied !== true) {
+      throw new SettingsPackageError("HuginnEIS did not confirm that the settings changes were applied");
+    }
+    if (!previewMatchesApply(preview.changes, response.changes)) {
+      throw new SettingsPackageError("HuginnEIS apply result changed; preview again before applying");
+    }
+    const applied = await markDeviceApplied(
+      window.localStorage, stored.local_id, stored.package.integrity.sha256);
+    showStoredSettingsPackage(applied);
+    resultTitle.textContent = "Applied to HuginnEIS";
+    resultSummary.textContent = `${response.changes.length} device-confirmed settings change(s) applied.`;
+  } catch (error) {
+    showSettingsTransferFailure(
+      "SETTINGS APPLY NOT CONFIRMED",
+      "The stored settings file remains available and was not marked applied.",
+      error);
+  }
+}
+
 async function verifyPendingSettingsPackageWithHuginnEis() {
   clearResult();
-  resultTitle.textContent = "VERIFYING WITH HUGINNEIS";
+  resultTitle.textContent = "Verifying with HuginnEIS";
   try {
     const stored = await loadLatestPendingPackage(window.localStorage);
     if (stored === null) {
@@ -130,7 +379,7 @@ async function verifyPendingSettingsPackageWithHuginnEis() {
     showStoredSettingsPackage(await markDeviceVerified(
       window.localStorage, stored.local_id, stored.package.integrity.sha256));
   } catch (error) {
-    resultTitle.textContent = "HUGINNEIS VERIFICATION NOT CONFIRMED";
+    resultTitle.textContent = "HuginnEIS verification not confirmed";
     resultSummary.textContent = "The verified package remains pending and was not applied.";
     resultFields.replaceChildren();
     resultFields.hidden = true;
@@ -349,7 +598,7 @@ function showCachedResponse(cacheType, cacheLabel, validator, showPresentation) 
 }
 
 function showFailure(error, targetUrl) {
-  resultTitle.textContent = "HUGINNEIS NOT CONNECTED";
+  resultTitle.textContent = "HuginnEIS not connected";
   resultSummary.textContent =
     "Live HuginnEIS access is unavailable. Importing a Huginn settings file remains available. " +
     "The technical connection diagnostic is shown below.";
@@ -430,6 +679,10 @@ settingsFileInput.addEventListener("change", async () => {
   }
 });
 settingsVerifyButton.addEventListener("click", () => void verifyPendingSettingsPackageWithHuginnEis());
+settingsPreviewButton.addEventListener("click", () => void previewPendingSettingsPackageWithHuginnEis());
+settingsApplyButton.addEventListener("click", openSettingsApplyConfirmation);
+settingsPreviewCancelButton.addEventListener("click", () => void showStoredPendingSettingsPackage());
+settingsApplyConfirmationButton.addEventListener("click", () => void applyPreviewedSettingsPackageToHuginnEis());
 clearButton.addEventListener("click", clearResult);
 
 updateBrowserContext();
