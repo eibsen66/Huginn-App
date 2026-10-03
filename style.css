@@ -60,6 +60,22 @@ button:active { transform: scale(0.985); }
 button.secondary { background: #263c42; color: #e9f3f1; }
 
 .result-panel { padding: 1rem; }
+.result-action-context {
+  margin: -0.15rem -0.15rem 0.9rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #b7791f;
+  border-radius: 0.55rem;
+  background: #ffe8a3;
+  color: #3f2a00;
+}
+.result-action-context-badge {
+  margin: 0;
+  color: #5b3a00;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+#result-action-context-supporting { margin: 0.3rem 0 0; color: #3f2a00; }
 #result-summary { line-height: 1.45; }
 .result-fields { display: grid; grid-template-columns: minmax(8rem, auto) 1fr; gap: 0.5rem 1rem; }
 .result-fields dt { color: #9fb6b5; font-weight: 700; }

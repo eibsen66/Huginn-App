@@ -32,10 +32,19 @@
       <button id="settings-preview-button" class="secondary" type="button" disabled>Preview settings changes</button>
       <button id="settings-apply-button" type="button" hidden disabled>Apply settings to HuginnEIS</button>
       <button id="settings-preview-cancel-button" class="secondary" type="button" hidden>CANCEL</button>
+      <button id="status-import-button" class="secondary" type="button">Import Huginn status file</button>
+      <input id="status-file-input" type="file" accept=".JSN,.jsn,application/json" hidden>
+      <button id="status-receive-button" class="secondary" type="button">Receive status from HuginnEIS</button>
+      <button id="status-preview-button" class="secondary" type="button">Show latest Huginn status</button>
+      <button id="status-transfer-muninn-button" class="secondary" type="button" disabled>Transfer status to Muninn</button>
       <button id="clear-button" class="secondary" type="button">CLEAR RESULT</button>
     </section>
 
     <section class="result-panel" aria-live="polite" aria-label="Test result">
+      <div id="result-action-context" class="result-action-context" hidden>
+        <p id="result-action-context-badge" class="result-action-context-badge"></p>
+        <p id="result-action-context-supporting"></p>
+      </div>
       <h2 id="result-title">READY</h2>
       <p id="result-summary">Choose a read-only Huginn API test.</p>
       <dl id="result-fields" class="result-fields" hidden></dl>

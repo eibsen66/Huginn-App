@@ -8,6 +8,14 @@ import {
   receiveSettingsPackage,
   verifySettingsPackage
 } from "./settings-package.mjs";
+import {
+  StatusPackageError,
+  buildStatusPreview,
+  loadLatestStatusPackage,
+  receiveStatusPackage
+} from "./status-package.mjs";
+import { receiveDirectStatusPackage } from "./direct-status-receive.mjs";
+import { transferStoredStatusPackage } from "./muninn-status-transfer.mjs";
 
 const HUGINN_API_BASE_URL = "https://192.168.4.1";
 const PING_URL = `${HUGINN_API_BASE_URL}/api/v1/ping`;
@@ -36,6 +44,9 @@ const resultSummary = document.querySelector("#result-summary");
 const resultFields = document.querySelector("#result-fields");
 const resultJson = document.querySelector("#result-json");
 const resultDiagnostics = document.querySelector("#result-diagnostics");
+const resultActionContext = document.querySelector("#result-action-context");
+const resultActionContextBadge = document.querySelector("#result-action-context-badge");
+const resultActionContextSupporting = document.querySelector("#result-action-context-supporting");
 const pingButton = document.querySelector("#ping-button");
 const infoButton = document.querySelector("#info-button");
 const configButton = document.querySelector("#config-button");
@@ -50,14 +61,32 @@ const settingsPreviewCancelButton = document.querySelector("#settings-preview-ca
 const settingsApplyConfirmation = document.querySelector("#settings-apply-confirmation");
 const settingsApplyConfirmationChanges = document.querySelector("#settings-apply-confirmation-changes");
 const settingsApplyConfirmationButton = document.querySelector("#settings-apply-confirmation-button");
+const statusImportButton = document.querySelector("#status-import-button");
+const statusFileInput = document.querySelector("#status-file-input");
+const statusReceiveButton = document.querySelector("#status-receive-button");
+const statusPreviewButton = document.querySelector("#status-preview-button");
+const statusTransferMuninnButton = document.querySelector("#status-transfer-muninn-button");
 const clearButton = document.querySelector("#clear-button");
 
 let pendingSettingsPreview = null;
+const PENDING_MUNINN_STATUS_TEXT = "Verified — pending transfer to Muninn";
 
 function updateBrowserContext() {
   pageOrigin.textContent = window.location.origin;
   secureContext.textContent = String(window.isSecureContext);
   localTime.textContent = new Date().toLocaleString();
+}
+
+function clearActionContext() {
+  resultActionContextBadge.textContent = "";
+  resultActionContextSupporting.textContent = "";
+  resultActionContext.hidden = true;
+}
+
+function showActionContext(badge, supportingText) {
+  resultActionContextBadge.textContent = badge;
+  resultActionContextSupporting.textContent = supportingText;
+  resultActionContext.hidden = false;
 }
 
 function clearResult() {
@@ -69,6 +98,7 @@ function clearResult() {
   resultJson.hidden = true;
   resultDiagnostics.textContent = "";
   resultDiagnostics.hidden = true;
+  clearActionContext();
   pendingSettingsPreview = null;
   settingsApplyButton.hidden = true;
   settingsApplyButton.disabled = true;
@@ -105,7 +135,7 @@ function showStoredSettingsPackage(stored) {
       `${preset.label} (RON ${preset.ron}, ${preset.is_avgas ? "AVGAS" : `E${preset.ethanol_percent}`})`).join("; "),
     "Default fuel preset": fuel.presets[fuel.default_preset_index].label
   };
-  resultTitle.textContent = "HUGINN SETTINGS FILE VERIFIED";
+  resultTitle.textContent = "Huginn SETTINGS FILE VERIFIED";
   resultSummary.textContent = stored.metadata.device_applied
     ? "Stored locally; device application was confirmed."
     : "Stored locally and pending transfer to HuginnEIS.";
@@ -236,6 +266,9 @@ function showSettingsPreview(stored, response) {
   resultJson.hidden = true;
   resultDiagnostics.textContent = "";
   resultDiagnostics.hidden = true;
+  showActionContext(
+    "PREVIEWED WITH HuginnEIS",
+    "Settings changes received from HuginnEIS");
   if (response.changes.length === 0) {
     resultTitle.textContent = "NO SETTINGS CHANGES REQUIRED";
     resultSummary.textContent = "HuginnEIS already matches this settings file.";
@@ -256,6 +289,7 @@ function showSettingsPreview(stored, response) {
 }
 
 function showSettingsTransferFailure(title, summary, error) {
+  clearActionContext();
   pendingSettingsPreview = null;
   settingsApplyButton.hidden = true;
   settingsApplyButton.disabled = true;
@@ -342,6 +376,9 @@ async function applyPreviewedSettingsPackageToHuginnEis() {
     const applied = await markDeviceApplied(
       window.localStorage, stored.local_id, stored.package.integrity.sha256);
     showStoredSettingsPackage(applied);
+    showActionContext(
+      "APPLIED TO HuginnEIS",
+      "Settings applied successfully to HuginnEIS");
     resultTitle.textContent = "Applied to HuginnEIS";
     resultSummary.textContent = `${response.changes.length} device-confirmed settings change(s) applied.`;
   } catch (error) {
@@ -378,7 +415,11 @@ async function verifyPendingSettingsPackageWithHuginnEis() {
     verifyDeviceResponse(payload, stored);
     showStoredSettingsPackage(await markDeviceVerified(
       window.localStorage, stored.local_id, stored.package.integrity.sha256));
+    showActionContext(
+      "VERIFIED WITH HuginnEIS",
+      "Settings file verified by HuginnEIS");
   } catch (error) {
+    clearActionContext();
     resultTitle.textContent = "HuginnEIS verification not confirmed";
     resultSummary.textContent = "The verified package remains pending and was not applied.";
     resultFields.replaceChildren();
@@ -391,7 +432,8 @@ async function verifyPendingSettingsPackageWithHuginnEis() {
 }
 
 function showSettingsImportFailure(error) {
-  resultTitle.textContent = "HUGINN SETTINGS FILE NOT ACCEPTED";
+  clearActionContext();
+  resultTitle.textContent = "Huginn SETTINGS FILE NOT ACCEPTED";
   resultSummary.textContent = "The file was not stored and is not pending transfer.";
   resultFields.replaceChildren();
   resultFields.hidden = true;
@@ -403,11 +445,14 @@ function showSettingsImportFailure(error) {
 
 async function importSettingsFile(file) {
   clearResult();
-  resultTitle.textContent = "VERIFYING HUGINN SETTINGS FILE";
+  resultTitle.textContent = "VERIFYING Huginn SETTINGS FILE";
   resultSummary.textContent = file.name;
   try {
     const stored = await receiveSettingsPackage(new Uint8Array(await file.arrayBuffer()), window.localStorage);
     showStoredSettingsPackage(stored);
+    showActionContext(
+      "IMPORTED FROM FILE",
+      "Huginn settings file imported and verified");
   } catch (error) {
     showSettingsImportFailure(error);
   }
@@ -418,9 +463,131 @@ async function showStoredPendingSettingsPackage() {
     const stored = await loadLatestPendingPackage(window.localStorage);
     if (stored !== null) {
       showStoredSettingsPackage(stored);
+      clearActionContext();
     }
   } catch (error) {
     showSettingsImportFailure(error);
+  }
+}
+
+function statusTransferredToMuninn(stored) {
+  const metadata = stored.metadata;
+  return metadata.muninn_transferred === true &&
+    metadata.pending_muninn_transfer === false &&
+    metadata.muninn_transferred_sha256 === stored.package.integrity.sha256 &&
+    metadata.muninn_transferred_canonical_bytes ===
+      Number(stored.package.integrity.canonical_bytes);
+}
+
+async function refreshStatusTransferAvailability() {
+  try {
+    statusTransferMuninnButton.disabled = (await loadLatestStatusPackage(window.localStorage)) === null;
+  } catch {
+    statusTransferMuninnButton.disabled = true;
+  }
+}
+
+function showStoredStatusPackage(stored) {
+  const transferred = statusTransferredToMuninn(stored);
+  const fields = buildStatusPreview(stored.package);
+  fields.Status = transferred
+    ? "Verified \u2014 transferred to Muninn"
+    : PENDING_MUNINN_STATUS_TEXT;
+  resultTitle.textContent = "Huginn STATUS FILE VERIFIED";
+  resultSummary.textContent = fields.Status;
+  resultSummary.textContent = fields.Status;
+  showFields(fields, Object.keys(fields));
+  resultJson.textContent = "";
+  resultJson.hidden = true;
+  resultDiagnostics.textContent = "";
+  resultDiagnostics.hidden = true;
+  statusTransferMuninnButton.disabled = false;
+}
+
+function showStatusImportFailure(error) {
+  clearActionContext();
+  resultTitle.textContent = "Huginn STATUS FILE NOT ACCEPTED";
+  resultSummary.textContent = "The file was not stored and is not pending transfer to Muninn.";
+  resultFields.replaceChildren();
+  resultFields.hidden = true;
+  resultJson.textContent = "";
+  resultJson.hidden = true;
+  resultDiagnostics.textContent = error instanceof StatusPackageError ? error.message : String(error);
+  resultDiagnostics.hidden = false;
+}
+
+async function importStatusFile(file) {
+  clearResult();
+  resultTitle.textContent = "VERIFYING Huginn STATUS FILE";
+  resultSummary.textContent = file.name;
+  try {
+    const stored = await receiveStatusPackage(
+      new Uint8Array(await file.arrayBuffer()), window.localStorage);
+    showStoredStatusPackage(stored);
+    showActionContext(
+      "IMPORTED FROM FILE",
+      "Huginn status file imported and verified");
+  } catch (error) {
+    showStatusImportFailure(error);
+  }
+}
+
+async function showStoredStatusPackagePreview() {
+  try {
+    const stored = await loadLatestStatusPackage(window.localStorage);
+    if (stored === null) {
+      throw new StatusPackageError("No verified Huginn status file is stored locally");
+    }
+    showStoredStatusPackage(stored);
+    showActionContext(
+      "STORED STATUS",
+      "Showing latest verified Huginn status");
+  } catch (error) {
+    showStatusImportFailure(error);
+  }
+}
+
+async function transferStatusToMuninn() {
+  clearResult();
+  resultTitle.textContent = "TRANSFERRING STATUS TO Muninn";
+  resultSummary.textContent = "Sending the locally verified status package to Muninn.";
+  try {
+    const stored = await transferStoredStatusPackage(window.localStorage);
+    showStoredStatusPackage(stored);
+    showActionContext(
+      "TRANSFERRED TO Muninn",
+      "Status package accepted and verified by Muninn");
+    resultTitle.textContent = "Transferred to Muninn";
+    resultSummary.textContent = "Status package accepted and verified by Muninn.";
+  } catch (error) {
+    clearActionContext();
+    try {
+      const stored = await loadLatestStatusPackage(window.localStorage);
+      if (stored !== null) showStoredStatusPackage(stored);
+    } catch {
+      statusTransferMuninnButton.disabled = true;
+    }
+    resultTitle.textContent = "Muninn transfer not confirmed";
+    resultSummary.textContent = "The verified status package remains available and was not falsely marked transferred.";
+    resultDiagnostics.textContent = error instanceof StatusPackageError ? error.message : String(error);
+    resultDiagnostics.hidden = false;
+  }
+}
+
+async function receiveStatusFromHuginnEis() {
+  clearResult();
+  resultTitle.textContent = "RECEIVING Huginn STATUS";
+  resultSummary.textContent = "Receiving a read-only status package from HuginnEIS.";
+  try {
+    const stored = await receiveDirectStatusPackage(window.localStorage, {
+      fetchImpl: window.fetch.bind(window)
+    });
+    showStoredStatusPackage(stored);
+    showActionContext(
+      "RECEIVED FROM HuginnEIS",
+      "Huginn status received and verified");
+  } catch (error) {
+    showStatusImportFailure(error);
   }
 }
 
@@ -683,8 +850,20 @@ settingsPreviewButton.addEventListener("click", () => void previewPendingSetting
 settingsApplyButton.addEventListener("click", openSettingsApplyConfirmation);
 settingsPreviewCancelButton.addEventListener("click", () => void showStoredPendingSettingsPackage());
 settingsApplyConfirmationButton.addEventListener("click", () => void applyPreviewedSettingsPackageToHuginnEis());
+statusImportButton.addEventListener("click", () => statusFileInput.click());
+statusFileInput.addEventListener("change", async () => {
+  const [file] = statusFileInput.files;
+  statusFileInput.value = "";
+  if (file) {
+    await importStatusFile(file);
+  }
+});
+statusReceiveButton.addEventListener("click", () => void receiveStatusFromHuginnEis());
+statusPreviewButton.addEventListener("click", () => void showStoredStatusPackagePreview());
+statusTransferMuninnButton.addEventListener("click", () => void transferStatusToMuninn());
 clearButton.addEventListener("click", clearResult);
 
 updateBrowserContext();
 window.setInterval(updateBrowserContext, 1000);
 void showStoredPendingSettingsPackage();
+void refreshStatusTransferAvailability();
