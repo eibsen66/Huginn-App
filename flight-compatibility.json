@@ -1,0 +1,6 @@
+{
+  "schema": "huginn.flight-courier.compatibility",
+  "schema_version": 1,
+  "qualified_builds": [],
+  "scope": "desktop-development-harness-only"
+}

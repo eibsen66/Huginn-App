@@ -1,0 +1,1 @@
+{"schema":"huginn.flight-courier.mobile-qualification","schema_version":1,"qualified_builds":[],"required_fields":["platform","device_model","os_version","app_version","app_build","capacitor_version","webview_version","sqlite_implementation","sqlite_version","storage_durability_result","tls_result","permission_result"]}

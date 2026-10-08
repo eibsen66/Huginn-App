@@ -1,12 +1,14 @@
-# Huginn App
+# HuginnAPP
 
-Current standalone browser proof of concept:
+Production target: signed Capacitor packaged iOS/iPhone and Android/Samsung apps. Slice 3B-Mobile adds the local native foundation only. No mobile build is qualified and the full ACK gate remains false.
+
+Existing browser development proof of concept:
 https://github.com/eibsen66/Huginn-App
 
 This existing repository is public. Its visibility is unchanged. The older copy
 at `Huginn-Muninn/Huginn/App/poc` is a historical starter, not this current version.
 
-## Restore and run on Windows
+## Restore and run the Windows development harness
 
 Install Git for Windows on the replacement PC, then run in PowerShell with
 `C:\Huginn-App` absent:
@@ -18,7 +20,7 @@ git rev-parse HEAD
 Start-Process .\index.html
 ```
 
-There is no compilation or npm installation. `index.html`, `app.js`,
+The static Windows/browser harness needs no compilation or npm installation. Mobile packaging uses the pinned Capacitor project described below. `index.html`, `app.js`,
 `settings-package.mjs` and `style.css` are the complete static application
 source. Optional offline checks, if Node.js is already available:
 
@@ -47,3 +49,8 @@ That companion repository is private and requires authorized GitHub sign-in.
 Source reviewed before recovery documentation: commit
 `c511445e9f4c9d6e57de14cc1b968b0efc5ace57`. No App behavior was changed by the
 documentation and ignore-rule setup.
+
+## Flight Courier local foundation
+
+Slice 3B-Mobile adds pinned Capacitor 8.5.2 projects, native private SQLite and secure-credential services, a bounded local bridge, and an empty mobile qualification manifest. The existing HFL/IndexedDB modules and loopback launcher remain development/test tools.
+See [FLIGHT_COURIER_3B.md](FLIGHT_COURIER_3B.md) for local APIs, tests and owner mobile build/qualification gates. Temporary development app ID: `is.huginn.foundation.dev`; final store identity needs owner approval. It adds no device Courier requests or ACK transport.

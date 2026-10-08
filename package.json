@@ -1,0 +1,27 @@
+{
+  "name": "huginnapp-mobile-foundation",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "mobile:assets": "node scripts/mobile-assets.mjs",
+    "mobile:sync": "npm run mobile:assets && cap sync",
+    "test:mobile": "node --test tests/flight-mobile.test.mjs",
+    "test:regression": "node --test tests/settings-package.test.mjs tests/status-package.test.mjs tests/direct-status-receive.test.mjs tests/muninn-status-transfer.test.mjs tests/result-action-context-ui.test.mjs"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.5.2",
+    "@capacitor/android": "8.5.2",
+    "@capacitor/ios": "8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "overrides": {
+    "xcode": {
+      "uuid": "11.1.1"
+    }
+  }
+}

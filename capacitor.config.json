@@ -1,0 +1,8 @@
+{
+  "appId": "is.huginn.foundation.dev",
+  "appName": "HuginnAPP",
+  "webDir": "dist/mobile",
+  "server": { "androidScheme": "https" },
+  "ios": { "scheme": "HuginnAPP" },
+  "plugins": { "CapacitorHttp": { "enabled": false } }
+}

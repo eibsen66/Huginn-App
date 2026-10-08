@@ -38,3 +38,24 @@ secrets/
 *.cer
 *.csr
 *.der
+
+# Local launcher build intermediates
+launcher/bin/
+launcher/obj/
+
+# Mobile generated assets and local signing/toolchain state
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+ios/App/App/config.xml
+ios/App/App.xcodeproj/xcuserdata/
+ios/App/App.xcworkspace/xcuserdata/
+ios/App/DerivedData/
+*.keystore
+*.jks

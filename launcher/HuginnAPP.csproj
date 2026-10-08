@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework>
+    <AssemblyName>HuginnAPP</AssemblyName><PublishAot>true</PublishAot>
+    <SelfContained>true</SelfContained><RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <InvariantGlobalization>true</InvariantGlobalization><TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="../index.html;../app.js;../style.css;../settings-package.mjs;../status-package.mjs;../direct-status-receive.mjs;../muninn-status-transfer.mjs;../flight-evidence.mjs;../flight-storage.mjs;../flight-compatibility.json">
+      <Link>assets/%(Filename)%(Extension)</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+</Project>
