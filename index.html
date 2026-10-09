@@ -20,6 +20,31 @@
       <div><span>LOCAL TIME</span><output id="local-time"></output></div>
     </section>
 
+
+    <section id="flight-courier" class="courier-panel" aria-labelledby="courier-title">
+      <h2 id="courier-title">Flight Courier</h2>
+      <p id="courier-connection" role="status" aria-live="polite">UNPAIRED — Pairing required. Open the packaged HuginnAPP on your phone.</p>
+      <label for="courier-device">Device</label><select id="courier-device" aria-label="Paired HuginnEIS device"></select>
+      <p id="courier-summary">Flights: unknown waiting · Storage: unknown/64</p>
+      <p id="courier-capacity"></p>
+      <details><summary>Connection diagnostics</summary><p id="courier-peer"></p></details>
+      <p id="courier-gate">ACK unavailable until this phone/build is qualified</p>
+      <div class="courier-actions">
+        <button id="courier-pair" type="button">Pair / re-pair</button>
+        <button id="courier-scan" type="button" disabled aria-describedby="courier-scan-note">Scan QR — unavailable</button>
+        <button id="courier-refresh" type="button">Connect / refresh</button>
+        <button id="courier-auto" type="button">Transfer COMPLETE / INCOMPLETE</button>
+        <button id="courier-ack" type="button" disabled>Retry pending ACKs</button>
+        <button id="courier-cancel" type="button" class="secondary">Cancel transfer</button>
+      </div>
+      <p id="courier-scan-note">QR scanning is unavailable in this build. Use manual pairing.</p>
+      <p id="courier-action" role="status" aria-live="polite"></p>
+      <h3>HuginnEIS queue</h3><ul id="courier-queue" class="courier-list"></ul>
+      <h3>Stored on this phone</h3><p>Available offline. Integrity warnings remain after transfer.</p>
+      <ul id="courier-local" class="courier-list"></ul>
+      <button id="courier-more" type="button" class="secondary" hidden>Show more local evidence</button>
+    </section>
+
     <section class="actions" aria-label="Huginn API tests">
       <button id="ping-button" type="button">PING HUGINN</button>
       <button id="info-button" type="button">GET HUGINN INFO</button>

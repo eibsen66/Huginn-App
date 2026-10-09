@@ -14,6 +14,7 @@ import java.util.Arrays;
 final class CourierStore {
     private final Context context;private final File path;private SQLiteDatabase db;private final CourierCredentials credentials;
     CourierStore(Context c)throws Exception{context=c;path=new File(c.getNoBackupFilesDir(),"flight-courier-v1.sqlite");credentials=new CourierCredentials(c);open();}
+    android.database.Cursor uiRows(String sql,String[] args){return db.rawQuery(sql,args);}
     void open()throws Exception{
         db=SQLiteDatabase.openDatabase(path.getPath(),null,SQLiteDatabase.CREATE_IF_NECESSARY|SQLiteDatabase.NO_LOCALIZED_COLLATORS);
         db.disableWriteAheadLogging();query("PRAGMA journal_mode=DELETE");db.execSQL("PRAGMA synchronous=EXTRA");db.execSQL("PRAGMA foreign_keys=ON");db.execSQL("PRAGMA busy_timeout=5000");

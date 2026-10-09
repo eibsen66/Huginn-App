@@ -98,3 +98,18 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
 @media (min-width: 38rem) {
   .actions { grid-template-columns: 1fr 1fr 0.7fr; }
 }
+
+/* Courier styles are scoped to preserve Settings/Status presentation. */
+.courier-panel { margin-top:1.4rem;padding:1rem;border:1px solid #31535a;border-radius:.75rem;background:#041016;overflow-wrap:anywhere;min-width:0; }
+.courier-panel h3 { font-size:1rem;margin:1.25rem 0 .5rem; }
+.courier-actions { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr));gap:.65rem; }
+.courier-panel button,.courier-panel select { min-height:48px;max-width:100%;padding:.6rem;font:inherit; }
+.courier-panel select { width:100%;background:#263c42;color:#e9f3f1;border:1px solid #31535a;border-radius:.5rem; }
+.courier-panel button:disabled { opacity:.55; }
+.courier-panel :focus-visible { outline:3px solid #ffe8a3;outline-offset:3px; }
+.courier-list { padding:0;list-style:none;display:grid;gap:.8rem; }
+.courier-list li { padding:.8rem;border:1px solid #31535a;border-radius:.5rem;min-width:0; }
+.courier-list p { margin:.4rem 0; }
+.courier-list progress { width:100%;height:1rem; }
+.courier-list summary { min-height:44px;padding:.6rem 0;cursor:pointer; }
+.courier-warning { border-left:4px solid #ffe8a3;padding-left:.6rem; }

@@ -7,7 +7,8 @@
     "mobile:sync": "npm run mobile:assets && cap sync",
     "test:mobile": "node --test tests/flight-mobile.test.mjs",
     "test:regression": "node --test tests/settings-package.test.mjs tests/status-package.test.mjs tests/direct-status-receive.test.mjs tests/muninn-status-transfer.test.mjs tests/result-action-context-ui.test.mjs",
-    "test:courier": "node --test tests/flight-courier.test.mjs"
+    "test:courier": "node --test tests/flight-courier.test.mjs",
+    "test:courier-ui": "node --test tests/courier-ui.test.mjs"
   },
   "dependencies": {
     "@capacitor/core": "8.5.2",

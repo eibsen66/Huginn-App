@@ -23,7 +23,7 @@ public static class HuginnLauncher {
       var assets=new Dictionary<string,byte[]>(StringComparer.Ordinal);
       foreach(string leaf in Assets)assets.Add("/"+leaf,File.ReadAllBytes(Path.Combine(root,leaf)));
       assets.Add("/",assets["/index.html"]);
-      if(testing){assets.Add("/__test__/storage.mjs",File.ReadAllBytes(Path.Combine(root,"tests","flight-storage.browser.mjs")));
+      if(testing){assets.Add("/courier-ui.mjs",File.ReadAllBytes(Path.Combine(root,"courier-ui.mjs")));assets.Add("/flight-courier.mjs",File.ReadAllBytes(Path.Combine(root,"flight-courier.mjs")));assets.Add("/__test__/courier.mjs",File.ReadAllBytes(Path.Combine(root,"tests","courier-ui.browser.mjs")));assets.Add("/__test__/courier.html",Encoding.UTF8.GetBytes("<!doctype html><meta name=viewport content=width=device-width,initial-scale=1><link rel=stylesheet href=/style.css><script type=module>import('/__test__/courier.mjs').then(m=>m.run()).then(r=>window.testResult=r).catch(e=>window.testResult={error:String(e),stack:e.stack});</script>"));assets.Add("/__test__/storage.mjs",File.ReadAllBytes(Path.Combine(root,"tests","flight-storage.browser.mjs")));
         assets.Add("/__test__/vectors.json",File.ReadAllBytes(Path.Combine(root,"tests","fixtures","flight-v1-vectors.json")));
         assets.Add("/__test__/index.html",Encoding.UTF8.GetBytes("<!doctype html><title>Local synthetic storage tests</title><script type='module'>import('/__test__/storage.mjs').then(m=>m.run()).then(r=>window.testResult=r).catch(e=>window.testResult={error:String(e),stack:e.stack});</script>"));}
       listener=new TcpListener(IPAddress.Parse("127.0.0.1"),port);listener.Start();

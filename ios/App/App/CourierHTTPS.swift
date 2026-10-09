@@ -1,5 +1,6 @@
 import Foundation
 import Security
+import Network
 
 // Fixed endpoint, foreground-only, bounded delegate reads. One request per worker.
 // URLSession's delegate queue is separate from the blocking SQLite worker.
@@ -10,6 +11,10 @@ final class CourierHTTPS: NSObject, URLSessionDataDelegate {
     private let lock=NSLock();private var foreground=true;private var generation=0
     private var task:URLSessionDataTask?;private var session:URLSession?;private var signal:DispatchSemaphore?
     private var response:HTTPURLResponse?;private var body=Data();private var failure:CourierError?;private var cap=0;private var pin=""
+    private let pathMonitor=NWPathMonitor(requiredInterfaceType:.wifi)
+    private var localDenied=false
+    override init() { super.init();pathMonitor.pathUpdateHandler={ [weak self] path in guard let owner=self else { return };owner.lock.lock();owner.localDenied=path.status == .unsatisfied && path.unsatisfiedReason == .localNetworkDenied;owner.lock.unlock() };pathMonitor.start(queue:DispatchQueue(label:"is.huginn.courier.path")) }
+    deinit { pathMonitor.cancel() }
     func epoch()->Int { lock.lock();defer { lock.unlock() };return generation }
     func setForeground(_ value:Bool) { lock.lock();foreground=value;if !value { generation+=1;task?.cancel() };lock.unlock() }
     func cancel() { lock.lock();generation+=1;task?.cancel();lock.unlock() }
@@ -41,7 +46,7 @@ final class CourierHTTPS: NSObject, URLSessionDataDelegate {
         let encoding=r.value(forHTTPHeaderField:"Content-Encoding");guard encoding==nil || encoding?.lowercased()=="identity" else { failure=CourierError("CONTENT_ENCODING");completionHandler(.cancel);return };let expectedMedia=r.statusCode==206 ? "application/octet-stream":"application/json";guard r.value(forHTTPHeaderField:"Content-Type")?.split(separator:";").first?.trimmingCharacters(in:.whitespacesAndNewlines).lowercased()==expectedMedia else { failure=CourierError("RESPONSE_MEDIA_TYPE");completionHandler(.cancel);return };let limit=r.statusCode>=400 ? 512:cap;guard let length=r.value(forHTTPHeaderField:"Content-Length"),CourierWire.match(length,"0|[1-9][0-9]*"),let n=Int(length),n<=limit,r.value(forHTTPHeaderField:"Transfer-Encoding")==nil else { failure=CourierError("RESPONSE_LIMIT");completionHandler(.cancel);return };self.response=r;cap=limit;completionHandler(.allow)
     }
     func urlSession(_ session:URLSession,dataTask:URLSessionDataTask,didReceive data:Data) { lock.lock();defer { lock.unlock() };guard self.session===session else { return };if !foreground || data.count>cap-body.count { failure=CourierError("RESPONSE_LIMIT");dataTask.cancel();return };body.append(data) }
-    func urlSession(_ session:URLSession,task:URLSessionTask,didCompleteWithError error:Error?) { lock.lock();guard self.session===session else { lock.unlock();return };if error != nil && failure==nil { failure=CourierError("TRANSPORT_UNAVAILABLE") };if error==nil,let r=response,Int(r.value(forHTTPHeaderField:"Content-Length") ?? "") != body.count { failure=CourierError("BODY_LENGTH") };let sem=signal;lock.unlock();sem?.signal() }
+    func urlSession(_ session:URLSession,task:URLSessionTask,didCompleteWithError error:Error?) { lock.lock();guard self.session===session else { lock.unlock();return };if error != nil && failure==nil { failure=CourierError(localDenied ? "LOCAL_NETWORK_DENIED":"TRANSPORT_UNAVAILABLE") };if error==nil,let r=response,Int(r.value(forHTTPHeaderField:"Content-Length") ?? "") != body.count { failure=CourierError("BODY_LENGTH") };let sem=signal;lock.unlock();sem?.signal() }
     func urlSession(_ session:URLSession,didReceive challenge:URLAuthenticationChallenge,completionHandler:@escaping(URLSession.AuthChallengeDisposition,URLCredential?)->Void) {
         do { try require(challenge.protectionSpace.authenticationMethod==NSURLAuthenticationMethodServerTrust && challenge.protectionSpace.host=="192.168.4.1","TLS_CHALLENGE");guard let trust=challenge.protectionSpace.serverTrust,let url=Bundle.main.url(forResource:"huginn_dev_root_ca",withExtension:"cer",subdirectory:"public/mobile/trust/dev") else { throw CourierError("TRUST_PROFILE") };let rootDER=try Data(contentsOf:url);lock.lock();let expected=pin;lock.unlock();let exact=try Self.checkedTrust(trust,rootDER,expected)
             lock.lock();let allowed=foreground && self.session===session;lock.unlock();try require(allowed && exact==expected,"SPKI_MISMATCH");completionHandler(.useCredential,URLCredential(trust:trust))
