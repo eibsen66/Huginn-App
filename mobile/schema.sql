@@ -7,3 +7,8 @@ CREATE INDEX IF NOT EXISTS flights_session ON flights(s);
 CREATE TABLE IF NOT EXISTS ack_outbox(e TEXT PRIMARY KEY REFERENCES flights(e),state TEXT NOT NULL CHECK(state IN ('PENDING_SYNTHETIC','ACKED_SYNTHETIC')));
 CREATE TABLE IF NOT EXISTS clients(id TEXT PRIMARY KEY,bytes BLOB NOT NULL);
 PRAGMA user_version=1;
+
+-- Slice 3G additive schema. Synthetic outbox remains separate; tokens are never here.
+CREATE TABLE IF NOT EXISTS courier_pairs(ref TEXT PRIMARY KEY,device TEXT NOT NULL UNIQUE,pin TEXT NOT NULL,credential TEXT NOT NULL,repair INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS courier_remote(e TEXT PRIMARY KEY REFERENCES downloads(e),detail TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS courier_ack(e TEXT PRIMARY KEY REFERENCES flights(e),device TEXT NOT NULL,request TEXT NOT NULL,state TEXT NOT NULL CHECK(state IN ('PENDING','OUTCOME_UNKNOWN','ACKED')));

@@ -30,7 +30,7 @@ final class CourierStore {
     static long offset(JSONObject o)throws Exception{String s=text(o,"offset");EvidenceVerifier.require(s.matches("0|[1-9][0-9]*"),"OFFSET");long n=Long.parseLong(s);EvidenceVerifier.require(n<=0xffffffffL,"OFFSET");return n;}
     static byte[] decode(String s,int max){EvidenceVerifier.require(s.length()<=((max+2)/3)*4,"BYTES_LIMIT");byte[] b=Base64.decode(s,Base64.NO_WRAP);EvidenceVerifier.require(b.length<=max&&Base64.encodeToString(b,Base64.NO_WRAP).equals(s),"BASE64");return b;}
     static String key(JSONObject o)throws Exception{String e=text(o,"evidence_ref");EvidenceVerifier.require(e.matches("[0-9A-F]{2}(:[0-9A-F]{2}){5}\\|[0-9a-f]{32}\\|[0-9a-f]{64}"),"EVIDENCE_REF");return e;}
-    boolean conflicts(){return number("SELECT count(*) FROM (SELECT s FROM downloads GROUP BY s HAVING count(*)>1)")>0;}
+    boolean conflicts(){return number("SELECT count(*) FROM (SELECT s FROM downloads GROUP BY s HAVING count(*)>1)")>0||number("SELECT count(*) FROM downloads WHERE state='SOURCE_CHANGED'")>0;}
     JSObject status(String e){byte[] m=metadata(e);String s=query("SELECT s FROM downloads WHERE e=?",e);JSObject out=new JSObject();out.put("evidence_ref",e);out.put("offset",query("SELECT offset FROM downloads WHERE e=?",e));out.put("physical_bytes",Long.toString(EvidenceVerifier.physical(m)));out.put("state",query("SELECT state FROM downloads WHERE e=?",e));out.put("conflict",number("SELECT count(*) FROM downloads WHERE s=?",s)>1);String ack=query("SELECT ack_status FROM flights WHERE e=?",e);out.put("ack_status",ack==null?"NONE":ack);return out;}
     byte[] read(String e,long offset,int length)throws Exception{
         EvidenceVerifier.require(length>=1&&length<=16384&&offset>=0&&offset+length<=number("SELECT offset FROM downloads WHERE e=?",e),"READ_RANGE");byte[] result=new byte[length];int written=0;
@@ -60,14 +60,14 @@ final class CourierStore {
         if(operation.equals("storageQualification"))return qualification(packaged);
         if(operation.equals("platformInfo")){JSObject r=new JSObject();r.put("platform","android");r.put("os_version",android.os.Build.VERSION.RELEASE);r.put("device_model",android.os.Build.MODEL);r.put("packaged_context",packaged);r.put("capacitor_version","8.5.2");r.put("sqlite_implementation","android.database.sqlite.SQLiteDatabase");r.put("sqlite_version",query("SELECT sqlite_version()"));r.put("app_version",BuildConfig.VERSION_NAME);r.put("app_build",Integer.toString(BuildConfig.VERSION_CODE));r.put("fixture_build",fixtureBuild);return r;}
         if(operation.startsWith("credential")){
-            String ref;if(operation.equals("credentialStore")){EvidenceVerifier.require(fixtureBuild&&text(o,"fixture_id").equals("courier-v1"),"PAIRING_NOT_IMPLEMENTED");ref="fixture-"+java.util.UUID.randomUUID().toString().replace("-","");credentials.storeFixture(ref);}else{ref=text(o,"credential_ref");if(operation.equals("credentialDelete"))credentials.delete(ref);}
+            String ref;if(operation.equals("credentialStore")){EvidenceVerifier.require(fixtureBuild&&text(o,"fixture_id").equals("courier-v1"),"PAIRING_NOT_IMPLEMENTED");ref="fixture-"+java.util.UUID.randomUUID().toString().replace("-","");credentials.storeFixture(ref);}else{ref=text(o,"credential_ref");EvidenceVerifier.require(ref.startsWith("fixture-"),"FIXTURE_ONLY");if(operation.equals("credentialDelete"))credentials.delete(ref);}
             JSObject r=new JSObject();r.put("credential_ref",ref);r.put("exists",credentials.exists(ref));r.put("synthetic",true);return r;
         }
         if(operation.equals("evidenceCreateStaging")){
-            String device=text(o,"source_device_id"),sha=text(o,"metadata_sha256");EvidenceVerifier.require(device.matches("[0-9A-F]{2}(:[0-9A-F]{2}){5}"),"DEVICE_ID");byte[] m=decode(text(o,"metadata_base64"),108);EvidenceVerifier.metadata(m,sha);String s=device+"|"+EvidenceVerifier.hex(Arrays.copyOfRange(m,8,24)),e=s+"|"+sha;
+            EvidenceVerifier.require(fixtureBuild,"FIXTURE_ONLY");String device=text(o,"source_device_id"),sha=text(o,"metadata_sha256");EvidenceVerifier.require(device.matches("[0-9A-F]{2}(:[0-9A-F]{2}){5}"),"DEVICE_ID");byte[] m=decode(text(o,"metadata_base64"),108);EvidenceVerifier.metadata(m,sha);String s=device+"|"+EvidenceVerifier.hex(Arrays.copyOfRange(m,8,24)),e=s+"|"+sha;
             transaction(()->{db.execSQL("INSERT OR IGNORE INTO downloads(e,s,metadata) VALUES(?,?,?)",new Object[]{e,s,m});EvidenceVerifier.require(Arrays.equals(metadata(e),m),"DUPLICATE_METADATA");return null;});return status(e);
         }
-        String e=key(o);byte[] m=metadata(e);
+        String e=key(o);byte[] m=metadata(e);if(!operation.equals("evidenceGetStatus")&&!operation.equals("evidenceReopenVerify"))EvidenceVerifier.require(fixtureBuild&&number("SELECT count(*) FROM courier_remote WHERE e=?",e)==0,"FIXTURE_ONLY");
         if(operation.equals("evidenceGetStatus"))return status(e);
         if(operation.equals("evidenceReadRange")){int n=o.getInt("length");byte[] bytes=read(e,offset(o),n);JSObject r=new JSObject();r.put("bytes_base64",Base64.encodeToString(bytes,Base64.NO_WRAP));return r;}
         if(operation.equals("evidenceCommitRange")){
@@ -81,4 +81,13 @@ final class CourierStore {
         else if(operation.equals("evidenceMarkAcked")){transaction(()->{EvidenceVerifier.require(number("SELECT count(*) FROM ack_outbox WHERE e=?",e)==1,"NO_PENDING_ACK");db.execSQL("UPDATE ack_outbox SET state='ACKED_SYNTHETIC' WHERE e=?",new Object[]{e});db.execSQL("UPDATE flights SET ack_status='ACKED_SYNTHETIC' WHERE e=?",new Object[]{e});return null;});}
         else throw new IllegalArgumentException("UNKNOWN_OPERATION");return status(e);
     }
+
+    void write(String sql,Object... args){db.execSQL(sql,args);}
+    byte[] nativeMetadata(String e){return metadata(e);}
+    void commitNative(String e,long start,byte[] b)throws Exception {
+        long size=EvidenceVerifier.physical(metadata(e));EvidenceVerifier.require(b.length>0&&b.length==Math.min(16384,size-start),"CHUNK_LENGTH");String sha=EvidenceVerifier.hash(b);
+        transaction(()->{EvidenceVerifier.require("STAGING".equals(query("SELECT state FROM downloads WHERE e=?",e))&&number("SELECT offset FROM downloads WHERE e=?",e)==start,"CONTIGUOUS_OFFSET");write("INSERT INTO chunks(e,offset,bytes,sha) VALUES(?,?,?,?)",e,start,b,sha);write("UPDATE downloads SET offset=? WHERE e=?",start+b.length,e);return null;});
+    }
+    void revalidateCommitted(String e)throws Exception {long end=number("SELECT offset FROM downloads WHERE e=?",e);for(long o=0;o<end;o+=16384)read(e,o,(int)Math.min(16384,end-o));}
+    java.util.List<String> pending(String device){java.util.List<String> out=new java.util.ArrayList<>();try(Cursor c=db.rawQuery("SELECT e FROM courier_ack WHERE device=? AND state!='ACKED' ORDER BY e LIMIT 64",new String[]{device})){while(c.moveToNext())out.add(c.getString(0));}return out;}
 }

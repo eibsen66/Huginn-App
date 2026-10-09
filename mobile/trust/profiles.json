@@ -1,0 +1,16 @@
+{
+  "schema": "huginn.flight-courier.trust-profiles",
+  "schema_version": 1,
+  "development": {
+    "name": "HUGINN DEV ROOT CA",
+    "certificate": "dev/huginn_dev_root_ca.cer",
+    "certificate_sha256": "c8e47c813db321f292ef83d087f63620e5f17803de1ab2d26c6551674e247811",
+    "spki_sha256": "20e858a94e45fe602fa048ebb4df7317bf5cfa9017936efcab51a2c6b517a7d7",
+    "debug_only": true
+  },
+  "production": {
+    "enabled": false,
+    "certificate": null,
+    "release_gate": "PRODUCTION_TRUST_NOT_PROVISIONED"
+  }
+}

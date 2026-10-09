@@ -21,6 +21,15 @@
 		0CF0F37B42C4491EB0E22770 /* CourierStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5306D8AE892E4966B63A8308 /* CourierStore.swift */; };
 		5E09843FAA344D819CB63F45 /* FlightCourierPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35E4CF32315F4E73B15B65D2 /* FlightCourierPlugin.swift */; };
 		1B457957865A44D19F019DEE /* CourierViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E15A4B9115674F34BE3986CB /* CourierViewController.swift */; };
+		D3C22687656D431FBADC591C /* CourierWire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCD72D0AC32A4124B1F9E410 /* CourierWire.swift */; };
+		78DDD56BA8554A07B2CB1D23 /* CourierHTTPS.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6702C428E574978AF0C0CD7 /* CourierHTTPS.swift */; };
+		29D15E916A3546FAA3B77C84 /* CourierNetwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFA954B0F36E4285A4C97379 /* CourierNetwork.swift */; };
+		8B6905CBAC084C9FBEF906F0 /* CourierSPKI.c in Sources */ = {isa = PBXBuildFile; fileRef = 5ABA74F1D830419BAFD5F565 /* CourierSPKI.c */; };
+		9DABC3562DD34D04ADE0ABDA /* CourierQualification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D56FDB9105D462887FB6E41 /* CourierQualification.swift */; };
+		983613E16A61413A8927D799 /* CourierNativeTests.mdimporter in Copy Files */ = {isa = PBXBuildFile; fileRef = 6ACDB0E28A784C608A64F819 /* CourierNativeTests.mdimporter */; };
+		3E5C6A2EBFA644809ED22BE1 /* CourierNativeTrustTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 608A75549AB04FA39BC0C735 /* CourierNativeTrustTests.swift */; };
+		36C5A649F7134F61875E7251 /* huginn_dev_root_ca.cer in Resources */ = {isa = PBXBuildFile; fileRef = B67B539F2BB44C049F340C8D /* huginn_dev_root_ca.cer */; };
+		4723AFB82BEF4F23A12FD5FA /* dev-server-public.pem in Resources */ = {isa = PBXBuildFile; fileRef = 1B78B7DEE3B148FE82D610E4 /* dev-server-public.pem */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +49,15 @@
 		5306D8AE892E4966B63A8308 /* CourierStore.swift */ = {isa = PBXFileReference; name = "CourierStore.swift"; path = "CourierStore.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; includeInIndex = 0; };
 		35E4CF32315F4E73B15B65D2 /* FlightCourierPlugin.swift */ = {isa = PBXFileReference; name = "FlightCourierPlugin.swift"; path = "FlightCourierPlugin.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; includeInIndex = 0; };
 		E15A4B9115674F34BE3986CB /* CourierViewController.swift */ = {isa = PBXFileReference; name = "CourierViewController.swift"; path = "CourierViewController.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; includeInIndex = 0; };
+		DCD72D0AC32A4124B1F9E410 /* CourierWire.swift */ = {isa = PBXFileReference; name = "CourierWire.swift"; path = "CourierWire.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; includeInIndex = 0; };
+		F6702C428E574978AF0C0CD7 /* CourierHTTPS.swift */ = {isa = PBXFileReference; name = "CourierHTTPS.swift"; path = "CourierHTTPS.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; includeInIndex = 0; };
+		FFA954B0F36E4285A4C97379 /* CourierNetwork.swift */ = {isa = PBXFileReference; name = "CourierNetwork.swift"; path = "CourierNetwork.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; includeInIndex = 0; };
+		5ABA74F1D830419BAFD5F565 /* CourierSPKI.c */ = {isa = PBXFileReference; name = "CourierSPKI.c"; path = "CourierSPKI.c"; sourceTree = "<group>"; lastKnownFileType = sourcecode.c; includeInIndex = 0; };
+		0D56FDB9105D462887FB6E41 /* CourierQualification.swift */ = {isa = PBXFileReference; name = "CourierQualification.swift"; path = "CourierQualification.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; includeInIndex = 0; };
+		6ACDB0E28A784C608A64F819 /* CourierNativeTests.mdimporter */ = {isa = PBXFileReference; name = "CourierNativeTests.mdimporter"; path = "CourierNativeTests.mdimporter"; sourceTree = BUILT_PRODUCTS_DIR; fileEncoding = undefined; explicitFileType = "wrapper.cfbundle"; includeInIndex = 0; };
+		608A75549AB04FA39BC0C735 /* CourierNativeTrustTests.swift */ = {isa = PBXFileReference; name = "CourierNativeTrustTests.swift"; path = "../../tests/native/CourierNativeTrustTests.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; explicitFileType = undefined; includeInIndex = 0; };
+		B67B539F2BB44C049F340C8D /* huginn_dev_root_ca.cer */ = {isa = PBXFileReference; name = "huginn_dev_root_ca.cer"; path = "../../mobile/trust/dev/huginn_dev_root_ca.cer"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		1B78B7DEE3B148FE82D610E4 /* dev-server-public.pem */ = {isa = PBXFileReference; name = "dev-server-public.pem"; path = "../../tests/fixtures/tls/dev-server-public.pem"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -48,6 +66,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D6019B18693E4674BDA4E572 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -60,6 +85,7 @@
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
 				504EC3051FED79650016851F /* Products */,
+				FA0255ADE57E40D49449CA87 /* Resources */,
 			);
 			sourceTree = "<group>";
 		};
@@ -67,6 +93,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
+				6ACDB0E28A784C608A64F819 /* CourierNativeTests.mdimporter */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -88,8 +115,24 @@
 				5306D8AE892E4966B63A8308 /* CourierStore.swift */,
 				35E4CF32315F4E73B15B65D2 /* FlightCourierPlugin.swift */,
 				E15A4B9115674F34BE3986CB /* CourierViewController.swift */,
+				DCD72D0AC32A4124B1F9E410 /* CourierWire.swift */,
+				F6702C428E574978AF0C0CD7 /* CourierHTTPS.swift */,
+				FFA954B0F36E4285A4C97379 /* CourierNetwork.swift */,
+				5ABA74F1D830419BAFD5F565 /* CourierSPKI.c */,
+				0D56FDB9105D462887FB6E41 /* CourierQualification.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		FA0255ADE57E40D49449CA87 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				608A75549AB04FA39BC0C735 /* CourierNativeTrustTests.swift */,
+				B67B539F2BB44C049F340C8D /* huginn_dev_root_ca.cer */,
+				1B78B7DEE3B148FE82D610E4 /* dev-server-public.pem */,
+			);
+			name = Resources;
+			path = undefined;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -114,6 +157,24 @@
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
 			productType = "com.apple.product-type.application";
+		};
+		BFF0F27DA5974961B57E60F0 /* "CourierNativeTests" */ = {
+			isa = PBXNativeTarget;
+			name = "CourierNativeTests";
+			productName = "CourierNativeTests";
+			productReference = 6ACDB0E28A784C608A64F819;
+			productType = "com.apple.product-type.bundle.unit-test";
+			buildConfigurationList = 282ED44E13124024981D5236;
+			buildPhases = (
+				7F1D8FD256BF4DE9A500982E /* Sources */,
+				8AE06C9CCDB84CD68A6E0A8A /* Resources */,
+				D6019B18693E4674BDA4E572 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1E3CE78064AE487FBCA511BE /* PBXTargetDependency */,
+			);
 		};
 /* End PBXNativeTarget section */
 
@@ -148,6 +209,7 @@
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
+				BFF0F27DA5974961B57E60F0 /* "CourierNativeTests" */,
 			);
 		};
 /* End PBXProject section */
@@ -166,6 +228,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8AE06C9CCDB84CD68A6E0A8A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				36C5A649F7134F61875E7251 /* huginn_dev_root_ca.cer in Resources */,
+				4723AFB82BEF4F23A12FD5FA /* dev-server-public.pem in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -180,6 +251,19 @@
 				0CF0F37B42C4491EB0E22770 /* CourierStore.swift in Sources */,
 				5E09843FAA344D819CB63F45 /* FlightCourierPlugin.swift in Sources */,
 				1B457957865A44D19F019DEE /* CourierViewController.swift in Sources */,
+				D3C22687656D431FBADC591C /* CourierWire.swift in Sources */,
+				78DDD56BA8554A07B2CB1D23 /* CourierHTTPS.swift in Sources */,
+				29D15E916A3546FAA3B77C84 /* CourierNetwork.swift in Sources */,
+				8B6905CBAC084C9FBEF906F0 /* CourierSPKI.c in Sources */,
+				9DABC3562DD34D04ADE0ABDA /* CourierQualification.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7F1D8FD256BF4DE9A500982E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3E5C6A2EBFA644809ED22BE1 /* CourierNativeTrustTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -260,6 +344,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/App/Courier-Bridging-Header.h";
 			};
 			name = Debug;
 		};
@@ -311,6 +396,7 @@
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				VALIDATE_PRODUCT = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/App/Courier-Bridging-Header.h";
 			};
 			name = Release;
 		};
@@ -334,6 +420,7 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/App/Courier-Bridging-Header.h";
 			};
 			name = Debug;
 		};
@@ -355,8 +442,52 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/App/Courier-Bridging-Header.h";
 			};
 			name = Release;
+		};
+		7DEB22C363C848359B64AD74 /* Debug */ = {
+			name = Debug;
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				PRODUCT_NAME = "CourierNativeTests";
+				SKIP_INSTALL = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = "is.huginn.foundation.dev.CourierNativeTests";
+				GENERATE_INFOPLIST_FILE = YES;
+				SWIFT_VERSION = 5.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/App.app/App";
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				FRAMEWORK_SEARCH_PATHS = "$(inherited) $(PLATFORM_DIR)/Developer/Library/Frameworks $(SDKROOT)/Developer/Library/Frameworks";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+			};
+		};
+		749BFC4C923044C2BE2DB1D7 /* Release */ = {
+			name = Release;
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				PRODUCT_NAME = "CourierNativeTests";
+				SKIP_INSTALL = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = "is.huginn.foundation.dev.CourierNativeTests";
+				GENERATE_INFOPLIST_FILE = YES;
+				SWIFT_VERSION = 5.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/App.app/App";
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				FRAMEWORK_SEARCH_PATHS = "$(inherited) $(PLATFORM_DIR)/Developer/Library/Frameworks $(SDKROOT)/Developer/Library/Frameworks";
+			};
 		};
 /* End XCBuildConfiguration section */
 
@@ -379,6 +510,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		282ED44E13124024981D5236 /* Build configuration list for PBXNativeTarget "CourierNativeTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7DEB22C363C848359B64AD74 /* Debug */,
+				749BFC4C923044C2BE2DB1D7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -395,6 +535,24 @@
 			productName = "CapApp-SPM";
 		};
 /* End XCSwiftPackageProductDependency section */
+
+/* Begin PBXTargetDependency section */
+		1E3CE78064AE487FBCA511BE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 504EC3031FED79650016851F /* App */;
+			targetProxy = 5E087B8AAAB54853BD860DB1 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXContainerItemProxy section */
+		5E087B8AAAB54853BD860DB1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 504EC3031FED79650016851F;
+			remoteInfo = App;
+		};
+/* End PBXContainerItemProxy section */
 	};
 	rootObject = 504EC2FC1FED79650016851F /* Project object */;
 }

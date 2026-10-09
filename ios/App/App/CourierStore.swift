@@ -40,7 +40,7 @@ final class CourierStore {
     func transaction(_ work: () throws -> Void) throws { try run("BEGIN IMMEDIATE");do { try work();try run("COMMIT") } catch { try? run("ROLLBACK");throw error } }
     func metadata(_ e: String) throws -> Data { guard let m=try rows("SELECT metadata FROM downloads WHERE e=?",[e]).first?.first as? Data else { throw CourierError("EVIDENCE_NOT_FOUND") };return m }
     func reopen() throws { try require(sqlite3_close(db)==SQLITE_OK,"SQLITE_CLOSE");db=nil;try open() }
-    func conflicts() throws -> Bool { try number("SELECT count(*) FROM (SELECT s FROM downloads GROUP BY s HAVING count(*)>1)")>0 }
+    func conflicts() throws -> Bool { try number("SELECT count(*) FROM (SELECT s FROM downloads GROUP BY s HAVING count(*)>1)")>0 || number("SELECT count(*) FROM downloads WHERE state='SOURCE_CHANGED'")>0 }
     func status(_ e: String) throws -> [String:Any] {
         let m=try metadata(e),s=try text("SELECT s FROM downloads WHERE e=?",[e]);let ack=try text("SELECT ack_status FROM flights WHERE e=?",[e])
         return ["evidence_ref":e,"offset":String(try number("SELECT offset FROM downloads WHERE e=?",[e])),"physical_bytes":String(try EvidenceVerifier.physical(m)),"state":try text("SELECT state FROM downloads WHERE e=?",[e]),"conflict":try number("SELECT count(*) FROM downloads WHERE s=?",[s])>1,"ack_status":ack.isEmpty ? "NONE":ack]
@@ -75,13 +75,14 @@ final class CourierStore {
         if operation=="evidenceListImported" { let after=o["after"] as? String ?? "";try require(after.utf8.count<=256,"FIELD_LIMIT");let rows=try rows("SELECT e FROM flights WHERE e>? ORDER BY e LIMIT 64",[after]);return ["flights":try rows.map { try status($0[0] as! String) },"limit":64] }
         if operation=="storageQualification" { return try qualification(packaged) }
         if operation=="platformInfo" { return ["platform":"ios","packaged_context":packaged,"capacitor_version":"8.5.2","sqlite_implementation":"Apple SQLite3","sqlite_version":try text("SELECT sqlite_version()"),"fixture_build":fixtureBuild,"app_version":Bundle.main.object(forInfoDictionaryKey:"CFBundleShortVersionString") as? String ?? "unknown","app_build":Bundle.main.object(forInfoDictionaryKey:"CFBundleVersion") as? String ?? "unknown","os_version":ProcessInfo.processInfo.operatingSystemVersionString] }
-        if operation.hasPrefix("credential") { let ref: String;if operation=="credentialStore" { try require(fixtureBuild && field(o,"fixture_id")=="courier-v1","PAIRING_NOT_IMPLEMENTED");ref="fixture-"+UUID().uuidString.replacingOccurrences(of:"-",with:"").lowercased();try credentials.storeFixture(ref) } else { ref=try field(o,"credential_ref");if operation=="credentialDelete" { try credentials.delete(ref) } };return ["credential_ref":ref,"exists":try credentials.exists(ref),"synthetic":true] }
+        if operation.hasPrefix("credential") { let ref: String;if operation=="credentialStore" { try require(fixtureBuild && field(o,"fixture_id")=="courier-v1","PAIRING_NOT_IMPLEMENTED");ref="fixture-"+UUID().uuidString.replacingOccurrences(of:"-",with:"").lowercased();try credentials.storeFixture(ref) } else { ref=try field(o,"credential_ref");try require(ref.hasPrefix("fixture-"),"FIXTURE_ONLY");if operation=="credentialDelete" { try credentials.delete(ref) } };return ["credential_ref":ref,"exists":try credentials.exists(ref),"synthetic":true] }
         if operation=="evidenceCreateStaging" {
-            let device=try field(o,"source_device_id"),sha=try field(o,"metadata_sha256");try require(device.range(of:"^[0-9A-F]{2}(:[0-9A-F]{2}){5}$",options:.regularExpression) != nil,"DEVICE_ID")
+            try require(fixtureBuild,"FIXTURE_ONLY");let device=try field(o,"source_device_id"),sha=try field(o,"metadata_sha256");try require(device.range(of:"^[0-9A-F]{2}(:[0-9A-F]{2}){5}$",options:.regularExpression) != nil,"DEVICE_ID")
             let m=try decode(field(o,"metadata_base64"),108);try EvidenceVerifier.metadata(m,sha);let s=device+"|"+m.part(8,16).hex,e=s+"|"+sha
             try transaction { try run("INSERT OR IGNORE INTO downloads(e,s,metadata) VALUES(?,?,?)",[e,s,m]);try require(try metadata(e)==m,"DUPLICATE_METADATA") };return try status(e)
         }
         let e=try field(o,"evidence_ref");try require(e.range(of:"^[0-9A-F]{2}(:[0-9A-F]{2}){5}\\|[0-9a-f]{32}\\|[0-9a-f]{64}$",options:.regularExpression) != nil,"EVIDENCE_REF");let m=try metadata(e)
+        if operation != "evidenceGetStatus" && operation != "evidenceReopenVerify" { try require(try fixtureBuild && number("SELECT count(*) FROM courier_remote WHERE e=?",[e])==0,"FIXTURE_ONLY") }
         if operation=="evidenceGetStatus" { return try status(e) }
         if operation=="evidenceReadRange" { guard let n=o["length"] as? Int,n>=1,n<=16384 else { throw CourierError("READ_RANGE") };return ["bytes_base64":try read(e,offset(o),n).base64EncodedString()] }
         if operation=="evidenceCommitRange" {
@@ -95,4 +96,7 @@ final class CourierStore {
         else if operation=="evidenceMarkAcked" { try transaction { try require(try number("SELECT count(*) FROM ack_outbox WHERE e=?",[e])==1,"NO_PENDING_ACK");try run("UPDATE ack_outbox SET state='ACKED_SYNTHETIC' WHERE e=?",[e]);try run("UPDATE flights SET ack_status='ACKED_SYNTHETIC' WHERE e=?",[e]) } }
         else { throw CourierError("UNKNOWN_OPERATION") };return try status(e)
     }
+
+    func commitNative(_ e:String,_ start:Int64,_ b:Data)throws { let size=try EvidenceVerifier.physical(metadata(e));try require(!b.isEmpty && b.count==Int(min(16384,size-start)),"CHUNK_LENGTH");try transaction { try require(try text("SELECT state FROM downloads WHERE e=?",[e])=="STAGING" && number("SELECT offset FROM downloads WHERE e=?",[e])==start,"CONTIGUOUS_OFFSET");try run("INSERT INTO chunks(e,offset,bytes,sha) VALUES(?,?,?,?)",[e,start,b,b.sha]);try run("UPDATE downloads SET offset=? WHERE e=?",[start+Int64(b.count),e]) } }
+    func revalidateCommitted(_ e:String)throws { let end=try number("SELECT offset FROM downloads WHERE e=?",[e]);var offset:Int64=0;while offset<end { _=try read(e,offset,Int(min(16384,end-offset)));offset+=16384 } }
 }
