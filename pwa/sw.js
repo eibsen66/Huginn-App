@@ -1,6 +1,6 @@
 // Asset-only offline cache. No device routes, credentials, evidence DB or ACK transport.
 const CACHE='huginn-pwa-p1-v1';
-const ASSETS=['./','./index.html','./style.css','./entry.mjs','./adapter.mjs','./flight-evidence.mjs','./flight-storage.mjs','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-512.png','./icons/apple-touch-icon.png','./fixtures/catalog.json','./fixtures/complete.FLG','./fixtures/incomplete.FLG','./fixtures/ceiling.FLG'];
+const ASSETS=['./','./index.html','./style.css','./entry.mjs','./adapter.mjs','./flight-evidence.mjs','./flight-storage.mjs','./manifest.webmanifest','./icons/huginn-logo-original.png','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-512.png','./icons/apple-touch-icon.png','./fixtures/catalog.json','./fixtures/complete.FLG','./fixtures/incomplete.FLG','./fixtures/ceiling.FLG'];
 const allowed=new Set(ASSETS.map(path=>new URL(path,self.registration.scope).href));
 self.addEventListener('install',event=>event.waitUntil((async()=>{
   const cache=await caches.open(CACHE);

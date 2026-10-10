@@ -1,8 +1,9 @@
 import {mkdir,copyFile,readFile,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {join,resolve} from 'node:path';
+await import('./pwa-icons.mjs');
 const root=new URL('../',import.meta.url),out=resolve(new URL('../dist/pwa/',import.meta.url).pathname.replace(/^\/(?:([A-Za-z]:))/,'$1'));
-const files=['index.html','style.css','entry.mjs','adapter.mjs','manifest.webmanifest','sw.js','icons/icon-192.png','icons/icon-512.png','icons/icon-maskable-512.png','icons/apple-touch-icon.png','fixtures/catalog.json','fixtures/complete.FLG','fixtures/incomplete.FLG','fixtures/ceiling.FLG'];
+const files=['index.html','style.css','entry.mjs','adapter.mjs','manifest.webmanifest','sw.js','icons/huginn-logo-original.png','icons/icon-192.png','icons/icon-512.png','icons/icon-maskable-512.png','icons/apple-touch-icon.png','fixtures/catalog.json','fixtures/complete.FLG','fixtures/incomplete.FLG','fixtures/ceiling.FLG'];
 await mkdir(out,{recursive:true});
 const hashes={};
 for(const file of [...files,'flight-evidence.mjs','flight-storage.mjs']){
