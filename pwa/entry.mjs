@@ -1,3 +1,6 @@
+import {bindVersionInformation} from './version-info.mjs';
+const APP_BUILD='__HUGINN_BUILD_ID__';
+const HTML_BUILD=document.querySelector('meta[name="huginn-build"]')?.content;
 import {openPwa,checkSize,requireFeatures,exportFile,FULL_ACK_GATE_PASS} from './adapter.mjs';
 import {evidenceKey} from './flight-storage.mjs';
 const el=id=>document.getElementById(id);
@@ -79,3 +82,5 @@ async function offline(){
 }
 offline().catch(e=>{el('offline').textContent='Offline cache unavailable: '+e.message;});
 initialize().catch(error);
+
+bindVersionInformation({appBuild:APP_BUILD,htmlBuild:HTML_BUILD});

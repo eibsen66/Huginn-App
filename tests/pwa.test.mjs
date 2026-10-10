@@ -75,6 +75,14 @@ test('real Edge strict storage, interruption, export/reimport and offline cold s
     const image=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true});
     await mkdir(new URL('build/p1/',root),{recursive:true});
     await writeFile(new URL('build/p1/offline-phone-layout.png',root),Buffer.from(image.data,'base64'));
+    const build=JSON.parse(await readFile(new URL('dist/pwa/build.json',root),'utf8'));
+    const flightSnapshot="(async()=>{const r=indexedDB.open('huginn-pwa-p1-no-ack');return new Promise((resolve,reject)=>{r.onsuccess=()=>{const db=r.result,q=db.transaction('flights').objectStore('flights').getAll();q.onsuccess=()=>{db.close();resolve(q.result);};q.onerror=()=>reject(q.error);};});})()";
+    const beforeInfo=await evaluate(flightSnapshot);
+    await evaluate("document.querySelector('#info-refresh').onclick()");
+    const info=await evaluate("({app:document.querySelector('#info-app').textContent,controller:document.querySelector('#info-controller').textContent,active:document.querySelector('#info-active').textContent,waiting:document.querySelector('#info-waiting').textContent,cache:document.querySelector('#info-cache').textContent,open:document.querySelector('.app-info').open})");
+    assert.equal(info.app,build.version);assert.equal(info.controller,build.version);assert.equal(info.active,build.version);assert.equal(info.waiting,'None');assert.match(info.cache,/Complete expected shell/);assert.equal(info.open,false);
+    assert.deepEqual(await evaluate(flightSnapshot),beforeInfo,'diagnostics changed flight rows');
+    console.log('PWA offline real-worker version diagnostics and unchanged flight rows: PASS.');
     const ackCount=await evaluate(`(async()=>{const r=indexedDB.open('huginn-pwa-p1-no-ack');return await new Promise(resolve=>{r.onsuccess=()=>{const names=[...r.result.objectStoreNames];r.result.close();resolve(names.includes('ack_outbox'));};});})()`);
     assert.equal(ackCount,false);
     console.log('P1 offline fresh-document startup and stored evidence reopen: PASS (desktop loopback secure context; not iOS/HTTPS qualification).');
@@ -93,7 +101,7 @@ test('worker cache-install rollback and update admission preserve active work',a
   runInNewContext(source,{self,URL,fetch:async()=>{},caches:{open:async()=>({addAll:async()=>{if(rejected)throw Error('CACHE_INSTALL_FAILED');}}),delete:async key=>{deleted.push(key);},keys:async()=>[]}});
   let pending;
   rejected=true;handlers.install({waitUntil:p=>pending=p});await assert.rejects(()=>pending,/CACHE_INSTALL_FAILED/);
-  assert.deepEqual(deleted,['huginn-pwa-p1-v1']);
+  assert.deepEqual(deleted,['huginn-pwa-p1-__HUGINN_BUILD_ID__']);
   const event={data:{type:'ACTIVATE_WHILE_IDLE'},source:{id:'one',postMessage:value=>notices.push(value)},waitUntil:p=>pending=p};
   handlers.message(event);await pending;assert.equal(skipped,0);assert.equal(notices[0].type,'UPDATE_BLOCKED_OTHER_WINDOWS');
   clients=[{id:'one'}];handlers.message(event);await pending;assert.equal(skipped,1);

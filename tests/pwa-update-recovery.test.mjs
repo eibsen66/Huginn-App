@@ -14,7 +14,7 @@ test('P2 real service-worker replacement and offline recovery',{timeout:240000},
  const originalBytes=await Promise.all(original.fixtures.map(f=>readFile(new URL('pwa/fixtures/'+f.file,root))));
 
  const manifest=JSON.parse(await readFile(new URL('dist/pwa/build.json',root)));
- assert.equal(manifest.version,'661e500ad4349afc');assert.equal(manifest.full_ack_gate_pass,false);
+ assert.match(manifest.version,/^[0-9a-f]{16}$/);assert.equal(manifest.full_ack_gate_pass,false);
  const versions=new Map();
  for(const version of ['A','B','C','D']){
   const assets=new Map();
@@ -22,7 +22,7 @@ test('P2 real service-worker replacement and offline recovery',{timeout:240000},
    let body=await readFile(new URL('dist/pwa/'+file,root));
    if(file==='index.html')body=Buffer.from(body.toString().replace('<body>','<body data-test-version="'+version+'">'));
    if(file==='entry.mjs')body=Buffer.from(body.toString().replace('openPwa({catalog})',"openPwa({catalog,name:'huginn-p2-update'})"));
-   if(file==='sw.js')body=Buffer.from(body.toString().replace('huginn-pwa-p1-'+manifest.version,'huginn-pwa-p1-p2-update-'+version));
+   if(file==='sw.js')body=Buffer.from(body.toString().replace("const CACHE='huginn-pwa-p1-'+BUILD;","const CACHE='huginn-pwa-p1-p2-update-"+version+"';"));
    assets.set('/'+file,body);
   }
   assets.set('/',assets.get('/index.html'));versions.set(version,assets);

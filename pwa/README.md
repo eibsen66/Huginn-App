@@ -267,3 +267,13 @@ Read-only source review of C:/Muninn/README.md and muninn_app/importer.py/ui.py 
 5. Review a NO-ACK end-to-end transfer/import specification and Muninn HFL/Replay scope before implementing device transport or PC integration. Manual cloud transfer tests need separate authorization and online access; OAuth must not become a prerequisite for offline operation. Native phone qualification stays a separate track.
 
 No blocker prevents recording these results. Remaining blockers to broader readiness are untested iPhone active-write interruption/storage/update behavior, untested browser/device trust and networking, and absent Muninn HFL Replay import. None is marked passed. No application code, assets, protocol, qualification file, firmware, Muninn source, hardware or deployment was changed by this documentation update.
+
+### Read-only installed-app version diagnostics
+
+The collapsed App information section reports the build captured by the running entry module, the controlling worker, registration active worker, waiting worker and expected offline shell cache. Refresh information only queries worker identities and reads existing cache entries. It does not register/update workers, activate a waiting worker, reload, delete caches or access flight records. The existing update admission/activation policy is unchanged.
+
+The builder hashes ordered canonical source inputs with build placeholders, derives a 16-character identity, stamps HTML, entry and worker, and records final artifact hashes in build.json. A server build.json is deployment evidence, not proof of the installed application's running identity. HTML/entry disagreement is reported separately. Application and worker versions differ is displayed only when both identities are known and unequal.
+
+Worker replies use a correlated versioned MessageChannel protocol with scope/cache validation and bounded timeout. Legacy workers, invalid replies and unavailable APIs report Unknown or Unavailable; controller changes invalidate the snapshot. Cache presence means expected shell assets are present, not durable evidence retention or complete attestation of every already-loaded module. Waiting worker information is a snapshot and does not promise activation or rollback.
+
+Automated desktop diagnostics are separate from physical iPhone qualification. The last owner-tested iPhone build remains 7ce3de4a1f28cc68. This source change creates a new build identity; no deployment or installed-phone update is authorized by implementation. Physical qualification must record the running app and controlling worker, waiting state, offline cache and retained synthetic fixture hashes before and after an approved update. Preserve independent verified exports, NO-ACK and FULL_ACK_GATE_PASS=false.

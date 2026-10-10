@@ -23,6 +23,7 @@ test('P2 bounded storage estimates and simulated database loss',{timeout:240000}
  assets.set('/storage-faults.mjs',{type:'text/javascript',body:await readFile(new URL('tests/pwa-storage-faults.mjs',root))});
  const entry=(await readFile(new URL('pwa/entry.mjs',root),'utf8')).replace('openPwa({catalog})','openPwa({catalog,name:globalThis.p2UiDatabase})');
  assets.set('/entry.mjs',{type:'text/javascript',body:entry});
+ assets.set('/version-info.mjs',{type:'text/javascript',body:await readFile(new URL('pwa/version-info.mjs',root))});
  assets.set('/',{type:'text/html',body:(await readFile(new URL('pwa/index.html',root),'utf8')).replace(/<script[^>]*><\/script>/g,'')});
  const server=createServer((req,res)=>{
   const a=assets.get(req.url);
