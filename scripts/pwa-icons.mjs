@@ -26,13 +26,17 @@ function chunk(type,data){
   return Buffer.concat([size,name,data,crc]);
 }
 for(const [file,size,artSize] of [['icon-192.png',192,192],['icon-512.png',512,512],['icon-maskable-512.png',512,384],['apple-touch-icon.png',180,180]]){
-  // Nearest-neighbour sampling preserves source RGBA values exactly. No recoloring or opaque background.
+  // Same approved artwork and nearest-neighbour scale; flatten onto the existing header background (#10283b) for install icons.
   const rows=Buffer.alloc((size*4+1)*size),inset=(size-artSize)/2;
+  const background=[16,40,59];
+  for(let y=0;y<size;y++)for(let x=0;x<size;x++)rows.set([...background,255],y*(size*4+1)+1+x*4);
   for(let y=0;y<artSize;y++)for(let x=0;x<artSize;x++){
     const from=(Math.floor(y*height/artSize)*width+Math.floor(x*width/artSize))*4;
-    pixels.copy(rows,(y+inset)*(size*4+1)+1+(x+inset)*4,from,from+4);
+        const target=(y+inset)*(size*4+1)+1+(x+inset)*4,alpha=pixels[from+3];
+    for(let channel=0;channel<3;channel++)rows[target+channel]=Math.round((pixels[from+channel]*alpha+background[channel]*(255-alpha))/255);
+    rows[target+3]=255;
   }
   const header=Buffer.alloc(13);header.writeUInt32BE(size);header.writeUInt32BE(size,4);header[8]=8;header[9]=6;
   await writeFile(new URL(file,base),Buffer.concat([source.subarray(0,8),chunk('IHDR',header),chunk('IDAT',deflateSync(rows)),chunk('IEND',Buffer.alloc(0))]));
 }
-console.log('PWA icons derived from approved 96x96 master; original RGBA preserved.');
+console.log('PWA icons derived from approved 96x96 master; install icons flattened onto unchanged header background; original master unchanged.');
