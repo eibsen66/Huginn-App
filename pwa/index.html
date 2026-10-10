@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#10283b"><meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="stylesheet" href="./style.css"><title>HuginnAPP — NO-ACK PWA</title></head>
+<body><main><header><img src="./icons/icon-192.png" width="56" height="56" alt=""><div><h1>HuginnAPP</h1><p>Offline synthetic evidence · P1</p></div></header>
+<p class="notice"><strong>NO-ACK</strong> · FULL_ACK_GATE_PASS = false<br>No pairing, device connection or cloud upload. Synthetic fixtures only.</p>
+<p id="offline" role="status">Checking offline installation…</p><p id="capabilities"></p>
+<section><h2>1. Import a synthetic fixture</h2><p>Maximum file size: 1 MiB. Choose a bundled fixture below, then import its unchanged .FLG file.</p>
+<ul id="fixtures"></ul><label>Fixture file <input id="import" type="file" accept=".FLG,.flg,application/octet-stream" disabled></label>
+<button id="persist" disabled>Request browser persistence</button><p id="persistence">Browser storage is not an archival guarantee.</p></section>
+<section><h2>2. Verify, export and re-import</h2><p>Export saves only the original fixture bytes. After saving, choose that exported file with Re-import to prove the round-trip.</p><div id="flights"></div></section>
+<p id="message" role="status" aria-live="polite"></p><p class="small">Keep an independent copy. Browser data can be cleared or evicted. No phone or native qualification is granted by this app.</p>
+<button id="update" hidden>Activate available update while idle</button></main><script type="module" src="./entry.mjs"></script></body></html>

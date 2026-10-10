@@ -1,0 +1,67 @@
+{
+  "schema": "huginn.pwa.synthetic-fixtures",
+  "schema_version": 1,
+  "provenance": "Synthetic only; independent fixture CRC/metadata encoder and Node SHA-256. Not device evidence.",
+  "fixtures": [
+    {
+      "label": "COMPLETE",
+      "file": "complete.FLG",
+      "metadata": {
+        "source_device_id": "AA:BB:CC:DD:EE:FF",
+        "session_id": "01112233445566778899aabbccddeeff",
+        "filename": "F000001.FLG",
+        "physical_sha256": "93e7956bc91945a4edae075b01f2fa3fa97f36cb1531d752c706b6f7dde93d5d",
+        "physical_bytes": "1088",
+        "start_utc": "1700000000",
+        "runtime_us": "301000000",
+        "record_count": 6,
+        "valid_bytes": 1088,
+        "state": "COMPLETE",
+        "complete": true,
+        "integrity": 1,
+        "hfl_version": 2,
+        "metadata_sha256": "aad913ae5afbf07367f0876adcc46a596f2129128040b331f7330fee1f8e4a91"
+      }
+    },
+    {
+      "label": "INCOMPLETE",
+      "file": "incomplete.FLG",
+      "metadata": {
+        "source_device_id": "AA:BB:CC:DD:EE:FF",
+        "session_id": "02112233445566778899aabbccddeeff",
+        "filename": "F000002.FLG",
+        "physical_sha256": "1258a8be2cb0201dbb8aa6bed4e2d78e31c574682f8172584177e5950b87646a",
+        "physical_bytes": "768",
+        "start_utc": "1700000000",
+        "runtime_us": "301000000",
+        "record_count": 4,
+        "valid_bytes": 768,
+        "state": "INCOMPLETE",
+        "complete": false,
+        "integrity": 1,
+        "hfl_version": 2,
+        "metadata_sha256": "31a544576b6558053729e743972c0cc8af812d2142b8cea83f5a17d3e93fcfaf"
+      }
+    },
+    {
+      "label": "ceiling (1 MiB limit)",
+      "file": "ceiling.FLG",
+      "metadata": {
+        "source_device_id": "AA:BB:CC:DD:EE:FF",
+        "session_id": "03112233445566778899aabbccddeeff",
+        "filename": "F000003.FLG",
+        "physical_sha256": "a665ab60cb630c78316cf0023f4165e2244ae06094f94ad65e6ba9118053fca9",
+        "physical_bytes": "1048576",
+        "start_utc": "1700000000",
+        "runtime_us": "954800000",
+        "record_count": 6552,
+        "valid_bytes": 1048448,
+        "state": "INCOMPLETE",
+        "complete": false,
+        "integrity": 2,
+        "hfl_version": 2,
+        "metadata_sha256": "f88e4e51b4cdf3723058c801f5ec5cb2ea5b0cae2d6094169d6cf3982af05a07"
+      }
+    }
+  ]
+}
