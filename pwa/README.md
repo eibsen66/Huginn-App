@@ -94,7 +94,7 @@ No browser cache/IndexedDB/export event changes device transfer state or permits
 ## Size and browser limitations
 Hard ceiling: 1,048,576 bytes (1 MiB), checked before reading File contents and at adapter boundaries.
 The largest bundled synthetic fixture exercises this ceiling in host and real desktop IndexedDB round-trip tests.
-No unlimited-file claim; iPhone validation of the same ceiling remains required.
+No unlimited-file claim. Owner-observed iPhone validation of the bundled 1 MiB fixture passed on 2026-10-10 as recorded below; larger files and other builds/devices are not qualified.
 WebCrypto and the reused parser/storage reconstruct whole buffers and records. This deliberately small ceiling bounds that P1 work.
 No background transfer guarantee. Screen lock, OS termination, reboot, low storage and origin eviction need owner tests.
 Strict durability is mandatory; browsers without it fail closed. Browser persistence is requested explicitly and is not archival assurance.
@@ -105,7 +105,7 @@ Native durability, TLS pinning and phone qualification remain separate; ACK stay
 ## Acceptance matrix
 Automated: integrity/hash/CRC, size rejection, strict IndexedDB, interrupted chunk/offset rollback, restart/resume, duplicate preservation,
 export/reimport byte identity, share cancellation/download fallback, unsupported features, no ACK store and offline fresh-document startup.
-Owner results: Safari-installed Home Screen cold launch and 1088-byte COMPLETE round-trip/reopen passed as recorded below. Remaining: Chrome/other contexts, full 1 MiB round trip, force termination/reboot,
+Owner results: Safari-installed Home Screen cold launch and COMPLETE, INCOMPLETE and 1 MiB ceiling fixture round-trip/reopen passed as recorded below. Remaining: Chrome/other contexts, interrupted imports, force termination/reboot,
 denied persistence/quota failure, explicit Files destinations, app update while idle/busy and Android/Windows installed modes.
 None of these tests requires pairing, a device endpoint, a real log, physical SD or an ACK.
 
@@ -154,23 +154,60 @@ Files also displayed iCloud synchronization errors while offline. This is not es
 |---|---|---|
 | Prior automated icon/PWA/mobile/Courier/UI regression run | 190/190 passed before approved deployment | Host/model/static coverage; not native phone execution. Not rerun for this documentation-only update. |
 | Prior real desktop Edge PWA run | 11/11 embedded browser checks, Edge 155.0.4283.45 | Desktop IndexedDB/offline/1 MiB behavior only; not iPhone proof. |
-| Physical Safari-installed iPhone PWA | Eight PASS results above | Owner-observed 1088-byte synthetic COMPLETE fixture on the named build. |
+| Physical Safari-installed iPhone PWA | Original eight PASS results plus extended fixture results below | Owner-observed synthetic COMPLETE 1088 bytes, INCOMPLETE 768 bytes and ceiling 1 MiB on the named build; no native qualification. |
 | Synthetic data | Catalog fixture identity and SHA match locally | No real aircraft evidence tested or authorized. |
 | Native Android/iOS and HuginnEIS integration | Not qualified by this record | Existing Android APK is preflight-only; no native phone/TLS/pairing/network/ACK validation added. |
 
 Source authority remains unchanged: pwa/adapter.mjs exports FULL_ACK_GATE_PASS=false, has a 1 MiB ceiling and denies ACK operations. mobile/qualification.json and flight-compatibility.json both retain empty qualified_builds. No PWA result is inserted into either list. NO-ACK, synthetic fixtures only, no pairing, no device connection and no cloud upload remain in force.
 
+
+### Extended physical iPhone fixture results — 2026-10-10
+
+Owner-reported physical tests on iPhone 17 Pro Max, Safari-installed Home Screen PWA, TEST origin https://huginnapp-pwa-test.pages.dev, build 7ce3de4a1f28cc68. Documentation baseline: 95a68b3df82a67fc00b9fd7432aab3a4e6035d98; this documentation update does not change the deployed build.
+
+| Fixture | Exact bytes | Reported classification | Offline import | IndexedDB verification | Export/re-import | Byte-identical hash/round-trip | Offline app restart persistence |
+|---|---:|---|---|---|---|---|---|
+| F000001.FLG (synthetic COMPLETE) | 1088 | COMPLETE | PASS | PASS | PASS | PASS | PASS |
+| F000002.FLG (synthetic INCOMPLETE) | 768 | INCOMPLETE — correct classification PASS | PASS | PASS | PASS | PASS | PASS |
+| F000003.FLG (synthetic ceiling) | 1048576 | INCOMPLETE — correct classification PASS | PASS | PASS | PASS | PASS | PASS |
+
+Full-file SHA-256 identities:
+
+- F000001.FLG: 93e7956bc91945a4edae075b01f2fa3fa97f36cb1531d752c706b6f7dde93d5d
+- F000002.FLG: 1258a8be2cb0201dbb8aa6bed4e2d78e31c574682f8172584177e5950b87646a
+- F000003.FLG: a665ab60cb630c78316cf0023f4165e2244ae06094f94ad65e6ba9118053fca9
+
+The owner reported the application displayed: “CRC, metadata identity and full-file SHA-256 verified after reopen.”
+
+Evidence is owner-observed and reported as supported by screenshots in ChatGPT. No independent screenshot inspection is claimed by this update; no repository screenshot evidence was supplied or inspected. Exact OS/browser build, export provider/path and ordinary OS reboot remain unrecorded. Application restart is not an OS reboot or proof of abrupt power-loss durability.
+
+Catalog/parser expectations, distinct from independently observed device diagnostics: the 768-byte fixture has integrity=1 and 768 valid bytes; the ceiling fixture has integrity=2, TORN_FINAL_RECORD and 1048448 valid bytes. Its full-file hash and byte-identical round-trip include the final 128 torn bytes. These bytes must not be trimmed and INCOMPLETE must not be converted to COMPLETE. The reported device classification/round-trip passes do not claim separate on-screen inspection of all parser internals.
+
+The tested physical size ceiling is now 1 MiB for this particular bundled fixture/device/build. This does not prove arbitrary 1 MiB inputs, accumulated storage capacity, interruption recovery or indefinite retention. Prior automated and desktop results remain separate evidence classes; no tests were rerun solely for this documentation update. Native qualification lists stay empty, FULL_ACK_GATE_PASS=false and NO-ACK remains active.
+
+### Recovery risk review and safest next tests
+
+All items below remain UNTESTED on the physical iPhone unless separately recorded; no new PASS is assigned.
+
+1. Ordinary reboot: keep independently verified local synthetic exports, disable networking, reboot normally and reopen the installed PWA. Verify all three rows, classifications and full-file hashes; repeat exact export/re-import. This is the safest next lifecycle test.
+2. Interrupted imports: use a separately agreed disposable synthetic test context. Interrupt staging/publication, reopen and select the same original fixture to resume. Strict transactions should keep chunk/offset and import publication atomic, but real interruption timing is not proven. Previously committed ranges may remain while an incomplete import is not listed. Record an interruption as inconclusive if the operation already finished; existing UI has no deterministic interruption hook.
+3. Persistence refusal and quota failure: record granted/denied/unavailable persistence behavior without clearing evidence. A denied persistence request does not block import or guarantee retention. The PWA has no quota-reserve preflight; write errors stop the operation and should abort the failing transaction while preserving earlier commits. Controlled failure injection requires a separately approved test setup; do not fill the owner's phone or clear website data merely to force failure.
+4. Concurrent windows: the busy lock is per adapter instance, not a cross-window mutex. On disposable synthetic data, verify concurrent attempts cannot expose partial imports, replace evidence or create mismatched offsets. Do not declare cross-window safety from the single-window tests.
+5. App update recovery: under separate deployment approval, test idle/busy/offline updates and incomplete asset delivery on a disposable installed test context. Preserve the previous usable shell and IndexedDB bytes; a successful cached cold launch does not prove update recovery.
+6. Eviction: browser persistence is not an archive and cannot prevent user deletion, uninstall or device loss. Eviction/deletion tests must use disposable synthetic storage, independent verified exports and explicit authorization; do not destroy the current owner's evidence. There is no guaranteed recovery from total origin-data loss without an external copy.
+
+Storage behavior still needs physical failure-path proof: strict writes abort on transaction failure; same-fixture re-selection validates committed chunks before resuming; corrupt staging is quarantined. There is no staging inspection/repair UI, deterministic quota/eviction/interruption control or browser-retention guarantee. Export dispatch is not a confirmed Files save or cloud upload. Keep all proposed tests offline/local and synthetic; no cloud upload, device pairing, transport or ACK is authorized here.
 ### Remaining P1 acceptance gates
 
 These are the outstanding tests from the acceptance matrix above, with additional risk characterization explicitly identified below. A PASS in one browser/context does not qualify another.
 
 | Gate | Current evidence | Remaining owner test |
 |---|---|---|
-| Tested size and classifications | iPhone COMPLETE 1088 bytes; desktop ceiling verified | Physical import/verify/export/re-import of bundled INCOMPLETE and exact 1 MiB torn-tail ceiling fixture; preserve state/integrity distinctions and rejection of oversized/non-catalogued input. |
+| Tested size and classifications | Owner iPhone PASS: COMPLETE 1088 bytes, INCOMPLETE 768 bytes and exact 1 MiB ceiling, including round-trip/reopen | Oversized/non-catalogued rejection remains a physical-device negative test; no unlimited-size claim or broader file corpus qualification. |
 | Interrupted writes and recovery | Automated rollback/resume coverage; normal iPhone app restart passed | Synthetic import interrupted during staging/publication, then reopen; offsets, visibility and bytes must remain consistent. Distinguish a normal close from actual OS termination. |
 | Lifecycle | Offline cold launch and app close/reopen passed | Screen lock/background, OS termination, ordinary phone reboot and low-battery interruption; record exact OS/build and operation timing. No invasive power-cut procedure. |
 | Storage pressure/persistence | Strict local verification passed on this device | Persistence request granted/denied/unavailable; quota/write failure and low-storage recovery. Verification must fail safely and never imply archival retention. |
-| Export destinations | One successful round-trip; provider not recorded | Explicit On My iPhone/local Files versus iCloud provider, offline availability, cancellation/failure and byte verification from the selected saved file. Cloud testing remains separately authorized later work. |
+| Export destinations | Three fixture round-trips reported; provider not recorded | Explicit On My iPhone/local Files versus iCloud provider, offline availability, cancellation/failure and byte verification from the selected saved file. Cloud testing remains separately authorized later work. |
 | Installed-app updates | Desktop candidate-cache failure and window admission tests | Existing Home Screen installation updating while idle/busy/offline; retain synthetic evidence and last usable shell after incomplete asset delivery. No deployment authorized by this record. |
 | Other contexts | Safari-installed Home Screen subset passed | Chrome-on-iOS installation and runtime separately; Safari browser-tab context, Android Chrome installed mode and Windows installed mode. Do not assume shared storage across contexts. |
 
@@ -189,9 +226,9 @@ Read-only source review of C:/Muninn/README.md and muninn_app/importer.py/ui.py 
 ### Recommended next sequence — approval required before further work
 
 1. Complete the evidence record: archive owner screenshots, exact iOS/browser build, install context and chosen local export destination. Keep the current eight PASS entries limited to this build/fixture.
-2. Run the remaining synthetic physical P1 size/classification, destination and lifecycle tests, beginning with INCOMPLETE and 1 MiB round-trips plus ordinary reboot. Confirm local exports remain readable and hash-identical offline.
+2. First perform an ordinary iPhone reboot offline, then verify and export/re-import all three existing synthetic rows. The bundled INCOMPLETE and 1 MiB round-trips are already owner-reported PASS; explicit local export destination and reboot recovery still need evidence.
 3. Agree and execute a disposable-data recovery matrix for interrupted writes, quota/persistence refusal, storage pressure and concurrent windows. Only then review whether a narrowly scoped PWA recovery/UX correction is needed.
 4. Qualify installed-app update/rollback behavior and the other browser/platform contexts independently. Keep deployment and implementation subject to separate approval.
 5. Review a NO-ACK end-to-end transfer/import specification and Muninn HFL/Replay scope before implementing device transport or PC integration. Manual cloud transfer tests need separate authorization and online access; OAuth must not become a prerequisite for offline operation. Native phone qualification stays a separate track.
 
-No blocker prevents recording these results. Remaining blockers to broader readiness are untested iPhone recovery/size/storage/update behavior, untested browser/device trust and networking, and absent Muninn HFL Replay import. None is marked passed. No application code, assets, protocol, qualification file, firmware, Muninn source, hardware or deployment was changed by this documentation update.
+No blocker prevents recording these results. Remaining blockers to broader readiness are untested iPhone interruption/reboot/storage/update behavior, untested browser/device trust and networking, and absent Muninn HFL Replay import. None is marked passed. No application code, assets, protocol, qualification file, firmware, Muninn source, hardware or deployment was changed by this documentation update.
