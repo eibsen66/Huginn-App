@@ -10,7 +10,7 @@ async function readFile(file){
 }
 async function action(work){
   if(busy)return;busy=true;document.querySelectorAll('button,input').forEach(e=>e.disabled=true);
-  try{await work();}catch(e){error(e);}finally{busy=false;document.querySelectorAll('button,input').forEach(e=>e.disabled=!app);}
+  try{await work();}catch(e){error(e);}finally{busy=false;document.querySelectorAll('button,input').forEach(e=>e.disabled=!app||(e.id==='persist'&&typeof navigator.storage?.persist!=='function'));}
 }
 function node(tag,text){const n=document.createElement(tag);n.textContent=text;return n;}
 async function render(){
@@ -49,7 +49,7 @@ async function initialize(){
     const li=node('li',''),a=node('a','Download synthetic '+f.label+' ('+f.metadata.physical_bytes+' bytes)');
     a.href='./fixtures/'+f.file;a.download=f.metadata.filename;li.append(a);el('fixtures').append(li);
   }
-  el('import').disabled=false;el('persist').disabled=!navigator.storage?.persist;
+  el('import').disabled=false;el('persist').disabled=typeof navigator.storage?.persist!=='function';
   el('import').onchange=()=>action(async()=>{
     message('Importing and validating original bytes…');
     await app.import(await readFile(el('import').files[0]));
