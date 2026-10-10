@@ -2,7 +2,7 @@
 
 Run node scripts/pwa-build.mjs then node --test tests/pwa-update-recovery.test.mjs, or the full node --test --test-concurrency=1 "tests/*.test.mjs" suite.
 
-Baseline: main 22ca2043c64c5766ba84857183dd3e166d1b1900; local production build 661e500ad4349afc. Last owner-tested iPhone build remains 7ce3de4a1f28cc68; no phone update/qualification performed.
+Historical desktop test baseline: main 22ca2043c64c5766ba84857183dd3e166d1b1900; local production build 661e500ad4349afc. Last owner-tested iPhone build remains 7ce3de4a1f28cc68; no phone update/qualification performed.
 
 Isolation: fresh temporary Edge profile, initially empty origin database list, ephemeral loopback-only server, explicit resource allowlist, separate huginn-p2-update database. Test assets are in memory and profile/cache/database in disposable browser storage. Only ignored local result reports are written to build/p2. No existing user profile, Cloudflare origin, hardware, source database reset, external upload or production file is accessed for mutation.
 
@@ -36,3 +36,9 @@ No production update/data-integrity defect observed in these scenarios. No produ
 Production exclusion scans shipped modules for test database/injection/variant markers and rechecks approved P1 hashes. Local production artifact remains 661e500ad4349afc, gate false. NO-ACK, synthetic only, no pairing/network-device/cloud route. New test files remain uncommitted; no push/deployment.
 
 2026-10-10 final full run: 275/275 automated top-level tests PASS; all 273 prior tests remain passing. P1 embedded Edge checks 11/11 PASS and offline reopen PASS. Prior P2 recovery, quota/concurrency and pressure/restoration PASS. New update A-O and all production exclusion checks PASS. Reports: ignored build/p2/update-results.json and build/p2-update-regressions.log.
+
+## Subsequent physical iPhone evidence
+
+The owner-observed 2026-10-10 Safari-installed iPhone 17 Pro Max update from 7ce3de4a1f28cc68 to 964ed3fbe71579ba is recorded in [the PWA qualification record](../pwa/README.md#physical-iphone-p2-update-record--2026-10-10). Deployment: 521bfb92-f358-4bf3-8360-41ddbef8aa7d; approved source: 7a125e910939a7cdcc246eaa9c0aecb7a1f55b4b. Running app, controlling worker and active worker identities matched; waiting None, complete shell, offline cold launch, ordinary offline device reboot, three retained VERIFIED LOCAL records and all three exact export/re-imports passed. Independently re-imported On My iPhone backups also passed.
+
+These later physical observations do not change the historical desktop A-O results above or qualify failed updates, busy/concurrent activation, abrupt interruption, storage migrations or general rollback on iPhone. Full fixture hashes, evidence attribution and remaining gaps are maintained in that single record. Screenshots were reported in ChatGPT, not independently inspected in the repository. Native/device-transfer qualification remains untested; NO-ACK and FULL_ACK_GATE_PASS=false remain unchanged. No automated tests were rerun for this documentation-only addition.

@@ -276,4 +276,38 @@ The builder hashes ordered canonical source inputs with build placeholders, deri
 
 Worker replies use a correlated versioned MessageChannel protocol with scope/cache validation and bounded timeout. Legacy workers, invalid replies and unavailable APIs report Unknown or Unavailable; controller changes invalidate the snapshot. Cache presence means expected shell assets are present, not durable evidence retention or complete attestation of every already-loaded module. Waiting worker information is a snapshot and does not promise activation or rollback.
 
-Automated desktop diagnostics are separate from physical iPhone qualification. The last owner-tested iPhone build remains 7ce3de4a1f28cc68. This source change creates a new build identity; no deployment or installed-phone update is authorized by implementation. Physical qualification must record the running app and controlling worker, waiting state, offline cache and retained synthetic fixture hashes before and after an approved update. Preserve independent verified exports, NO-ACK and FULL_ACK_GATE_PASS=false.
+Automated desktop diagnostics are separate from physical iPhone qualification. At implementation review, the last owner-tested iPhone build was 7ce3de4a1f28cc68. The subsequently approved TEST deployment and owner-observed update to 964ed3fbe71579ba are recorded below; implementation alone did not authorize deployment or qualify the phone. Physical qualification must record the running app and controlling worker, waiting state, offline cache and retained synthetic fixture hashes before and after an approved update. Preserve independent verified exports, NO-ACK and FULL_ACK_GATE_PASS=false.
+
+## Physical iPhone P2 update record — 2026-10-10
+
+Evidence class: owner-observed physical iPhone 17 Pro Max tests in the existing Safari-installed Home Screen PWA. Results and supporting screenshots were reported in ChatGPT; no independent repository-based screenshot inspection is claimed. Exact iOS/Safari build and update activation steps were not supplied. This record is limited to the described synthetic fixtures and update; it is not native iOS, aircraft, hardware-transfer or archival-retention qualification.
+
+- TEST origin: https://huginnapp-pwa-test.pages.dev
+- Previous owner-tested build: 7ce3de4a1f28cc68
+- Updated running build: 964ed3fbe71579ba
+- Deployment: 521bfb92-f358-4bf3-8360-41ddbef8aa7d
+- Approved source commit: 7a125e910939a7cdcc246eaa9c0aecb7a1f55b4b
+
+| Owner-observed check | Result / evidence |
+|---|---|
+| Existing installation update | PASS: existing Home Screen PWA updated without uninstalling; no IndexedDB clearing or storage reset. |
+| Running application identity | PASS: App build 964ed3fbe71579ba. |
+| Worker identities | PASS: controlling and active Service Workers both 964ed3fbe71579ba; waiting update None. |
+| Offline shell inspection | PASS: Complete expected shell. Cache presence is not flight-data retention proof. |
+| Offline cold launch | PASS after update. |
+| Ordinary device power-cycle | PASS: complete iPhone power-down and offline restart after update. Not abrupt termination during a write or activation. |
+| Existing records after reopen | PASS: all three existing synthetic records present and VERIFIED LOCAL; CRC, metadata identity and full-file SHA-256 verified after reopen. |
+| Post-update export/re-import | PASS for all three fixtures: BYTE-IDENTICAL ROUND-TRIP VERIFIED. |
+| Independent local backup usability | PASS: all three synthetic files independently re-imported from On My iPhone → HuginnEIS files and verified byte-identical. Backups were not deleted, overwritten or modified by this documentation task. |
+
+| Fixture | Bytes | Classification | Full-file SHA-256 |
+|---|---:|---|---|
+| F000001.FLG | 1088 | COMPLETE | 93e7956bc91945a4edae075b01f2fa3fa97f36cb1531d752c706b6f7dde93d5d |
+| F000002.FLG | 768 | INCOMPLETE | 1258a8be2cb0201dbb8aa6bed4e2d78e31c574682f8172584177e5950b87646a |
+| F000003.FLG | 1048576 | INCOMPLETE | a665ab60cb630c78316cf0023f4165e2244ae06094f94ad65e6ba9118053fca9 |
+
+The byte counts, classifications and hashes match the repository synthetic catalog and original fixture bytes. Owner-observed phone results remain distinct from the prior automated 295/295 and desktop Edge 11/11 predeployment results; those suites were not rerun for this documentation-only task. Earlier P1/P2 evidence is preserved. This physical record supersedes earlier outstanding normal-update/reboot and unrecorded local-backup-destination statements only for this specific build transition and these files; historical untested statements describe their original audit dates.
+
+Remaining physical qualification gaps: interrupted staging/publication and resume; quota failure, persistence refusal and storage pressure; actual browser-managed eviction and whole-origin loss; concurrent windows and update while busy; failed/incomplete candidate delivery on iPhone; OS termination during writes or activation; schema migration and activated-version rollback; unsupported/oversized input rejection; accumulated data/memory limits; other browser/install/device contexts. The existing schema is version 1; this result does not qualify future migrations. Local Files re-import proves current backup usability, not indefinite backup retention, device-loss recovery or cloud synchronization. No automatic rollback after worker activation is promised. Exact OS/browser versions, activation sequence and repository-archived screenshot evidence remain unrecorded.
+
+NO-ACK remains active; FULL_ACK_GATE_PASS=false; synthetic fixtures only. No native qualification list is changed. No live HuginnEIS connection, pairing, cloud upload or source-deletion authorization is established. No runtime, parser, storage, fixture, asset, firmware or Muninn changes accompany this record.
