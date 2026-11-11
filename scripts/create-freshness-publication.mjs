@@ -1,0 +1,2 @@
+import {readFile,writeFile} from 'node:fs/promises';
+let s=await readFile('scripts/pages-field-save-publication.mjs','utf8');s=s.replaceAll('build/field-save-review/publication','build/freshness-review/publication').replaceAll('build/field-save-review/candidate-3f1a35d5e2fe39bd','build/freshness-review/candidate-efbccf3990a4390c').replace('build/one-save-review/candidate-9dce699595b724ea/_headers','build/field-save-review/candidate-3f1a35d5e2fe39bd/_headers');await writeFile('scripts/pages-freshness-publication.mjs',s,{flag:'wx'});

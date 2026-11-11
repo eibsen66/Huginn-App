@@ -1,0 +1,2 @@
+import {readFile,writeFile,mkdir} from 'node:fs/promises';import {execFileSync} from 'node:child_process';
+let s=await readFile('scripts/check-field-save.mjs','utf8');s=s.replace("const out='build/field-save-review'","const out='build/freshness-review'").replace("'pwa-field-save-browser'","'pwa-freshness-browser'").replace("'pwa-field-save-upgrade'","'pwa-freshness-upgrade'").replaceAll('focused-tests.log','final-focused-tests.log');await writeFile('build/freshness-review/run-focused.mjs',s);await import('../build/freshness-review/run-focused.mjs');

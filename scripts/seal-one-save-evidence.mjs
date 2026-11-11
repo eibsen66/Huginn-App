@@ -1,0 +1,10 @@
+import {readFile,readdir,writeFile} from 'node:fs/promises';import {createHash} from 'node:crypto';import assert from 'node:assert/strict';
+const out='build/one-save-review',sha=b=>createHash('sha256').update(b).digest('hex');
+const r=JSON.parse(await readFile(out+'/final-candidate-review.json'));
+const baseline=await readFile('build/immediate-edit-preview-final/candidate-a891e07022384c69/settings-v2.mjs','utf8');
+assert((await readFile(r.directory+'/settings-v2.mjs','utf8')).startsWith(baseline),'Existing session/protocol validation must be byte-identical');
+const files=['pwa/settings-ui.mjs','pwa/settings-v2.mjs','pwa/index.html','tests/pwa-one-save-browser.test.mjs','tests/automatic-validation.test.mjs','tests/validation-expiry.test.mjs','scripts/check-one-save.mjs','scripts/prepare-one-save-review.mjs',out+'/capture-review.json',...((await readdir(out+'/screenshots')).map(f=>out+'/screenshots/'+f))];
+const hashes={};for(const p of files)hashes[p]=sha(await readFile(p));
+const raw=await readFile('C:/HuginnEIS/Evidence/REV2.7-COM5/console-20261106T095424Z/console.raw');assert.equal(sha(raw),'5d444f40c5b0a7b6b4b39e98bcc4ad6c6c23d736a7509980597f1f3e21166357');
+await writeFile(out+'/review-evidence.json',JSON.stringify({build:r.build,existing_session_protocol_prefix_unchanged:true,files:hashes,raw_capture_sha256:sha(raw),physical_operations:false,deployed:false},null,2)+'\n');
+console.log('Review source, protocol-prefix, screenshot and capture hashes verified; '+r.build);

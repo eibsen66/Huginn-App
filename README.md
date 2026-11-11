@@ -1,6 +1,6 @@
 # HuginnAPP
 
-Production target: signed Capacitor packaged iOS/iPhone and Android/Samsung apps. Slice 3B-Mobile adds the local native foundation only. No mobile build is qualified and the full ACK gate remains false.
+Owner-selected phone path: installed iPhone PWA / Add to Home Screen, preserving Android/browser support. Capacitor iOS/Android remains the existing parallel option; its qualification status is unchanged. See [First NO-ACK transfer slice](NO_ACK_TRANSFER.md) for local implementation, tests and the explicit browser trust blocker. Owner-confirmed installed/deployed PWA build: **6a2d2ea1505b8acf**, https://huginnapp-pwa-test.pages.dev. See [START-HERE](START-HERE.md) for the pause handoff.
 
 Existing browser development proof of concept:
 https://github.com/eibsen66/Huginn-App
@@ -54,3 +54,7 @@ documentation and ignore-rule setup.
 
 Slice 3B-Mobile adds pinned Capacitor 8.5.2 projects, native private SQLite and secure-credential services, a bounded local bridge, and an empty mobile qualification manifest. The existing HFL/IndexedDB modules and loopback launcher remain development/test tools.
 See [FLIGHT_COURIER_3B.md](FLIGHT_COURIER_3B.md) for local APIs, tests and owner mobile build/qualification gates. Temporary development app ID: `is.huginn.foundation.dev`; final store identity needs owner approval. It adds no device Courier requests or ACK transport.
+
+
+## Pause / resume (2026-11-11)
+Start at [START-HERE](https://github.com/eibsen66/Huginn-App/blob/main/START-HERE.md), locally `C:/HuginnAPP/START-HERE.md`. Open `C:/HuginnAPP/Huginn.code-workspace`; no build, deployment or device operation starts automatically. Historical status below/above remains historical; the handoff is current.

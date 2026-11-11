@@ -1,0 +1,130 @@
+diff --git a/components/mbedtls/port/aes/dma/esp_aes_dma_core.c b/components/mbedtls/port/aes/dma/esp_aes_dma_core.c
+index bf559dc..789129b 100644
+--- a/components/mbedtls/port/aes/dma/esp_aes_dma_core.c
++++ b/components/mbedtls/port/aes/dma/esp_aes_dma_core.c
+@@ -59,6 +59,15 @@
+ #define AES_MAX_CHUNK_WRITE_SIZE 1600
+ #endif
+ 
++#if CONFIG_IDF_TARGET_ESP32S3
++/* The AES/SHA hardware lock is held by every caller across this whole
++ * output-only bounce operation, including its final copy and error cleanup.
++ * Internal DMA storage avoids a per-operation heap allocation/fragmentation.
++ * Other targets and input-bounce paths retain their original allocation. */
++static DMA_ATTR __attribute__((aligned(16))) unsigned char s_s3_output_bounce[512];
++_Static_assert(sizeof(s_s3_output_bounce) % AES_BLOCK_BYTES == 0, "AES block size");
++#endif
++
+ /* Input over this length will yield and wait for interrupt instead of
+    busy-waiting, 30000 bytes is approx 0.5 ms */
+ #define AES_DMA_INTR_TRIG_LEN 2000
+@@ -244,18 +253,14 @@ static int esp_aes_process_dma_ext_ram(esp_aes_context *ctx, const unsigned char
+     uint32_t output_heap_caps = MALLOC_CAP_DMA;
+     unsigned char *input_buf = NULL;
+     unsigned char *output_buf = NULL;
++    bool output_buf_heap_owned = false;
+     const unsigned char *dma_input;
+     size_t chunk_limit = AES_MAX_CHUNK_WRITE_SIZE;
+ #if CONFIG_IDF_TARGET_ESP32S3
+-    /* The S3 can read DMA-capable PSRAM directly, but unaligned external
+-     * output needs an internal bounce buffer. Keep this output-only path
+-     * below the observed 736-byte largest DMA block, leaving space for
+-     * the DMA descriptors and allocator overhead. No persistent reserve
+-     * or allocation retry: ordinary allocation failures still propagate.
+-     * A whole AES block multiple preserves mode/stream state across chunks.
+-     */
++    /* Use the reserved output scratch only on the existing S3 output-only
++     * path. Whole AES blocks preserve stream/mode state across chunks. */
+     if (realloc_output && !realloc_input) {
+-        chunk_limit = 512;
++        chunk_limit = sizeof(s_s3_output_bounce);
+     }
+ #endif
+     chunk_len = MIN(chunk_limit, len);
+@@ -289,19 +294,29 @@ static int esp_aes_process_dma_ext_ram(esp_aes_context *ctx, const unsigned char
+     }
+ 
+     if (realloc_output) {
+-        /* Normal request context, never an allocator callback. No policy change. */
+-        huginn_aes_output_probe_constraints(input, output);
+-        huginn_aes_output_probe_before(len, chunk_len, output_alignment, output_heap_caps,
+-                                       realloc_input, input == output,
+-                                       esp_ptr_external_ram(input), esp_ptr_external_ram(output));
+-        output_buf = heap_caps_aligned_alloc(output_alignment, chunk_len, output_heap_caps);
+-        huginn_aes_output_probe_after(output_buf == NULL);
+-        if (output_buf == NULL) {
+-            huginn_aes_alloc_diag_failure(chunk_len, output_heap_caps, "bounce_output", __func__, __LINE__);
+-            mbedtls_platform_zeroize(output, len);
+-            ESP_LOGE(TAG, "Failed to allocate memory");
+-            ret = -1;
+-            goto cleanup;
++#if CONFIG_IDF_TARGET_ESP32S3
++        if (!realloc_input) {
++            output_buf = s_s3_output_bounce;
++            assert(esp_ptr_dma_capable(output_buf));
++            assert(((uintptr_t)output_buf & 15) == 0);
++        } else
++#endif
++        {
++            /* Normal request context, never an allocator callback. */
++            huginn_aes_output_probe_constraints(input, output);
++            huginn_aes_output_probe_before(len, chunk_len, output_alignment, output_heap_caps,
++                                           realloc_input, input == output,
++                                           esp_ptr_external_ram(input), esp_ptr_external_ram(output));
++            output_buf = heap_caps_aligned_alloc(output_alignment, chunk_len, output_heap_caps);
++            output_buf_heap_owned = output_buf != NULL;
++            huginn_aes_output_probe_after(output_buf == NULL);
++            if (output_buf == NULL) {
++                huginn_aes_alloc_diag_failure(chunk_len, output_heap_caps, "bounce_output", __func__, __LINE__);
++                mbedtls_platform_zeroize(output, len);
++                ESP_LOGE(TAG, "Failed to allocate memory");
++                ret = -1;
++                goto cleanup;
++            }
+         }
+     } else {
+         output_buf = output;
+@@ -338,9 +353,16 @@ cleanup:
+     if (realloc_input) {
+         free(input_buf);
+     }
+-    if (realloc_output) {
++    if (output_buf_heap_owned) {
+         free(output_buf);
+     }
++#if CONFIG_IDF_TARGET_ESP32S3
++    else if (output_buf == s_s3_output_bounce) {
++        /* Inner DMA cleanup has completed or aborted under the same lock.
++         * Wipe reserved storage before its next owner can acquire the lock. */
++        mbedtls_platform_zeroize(s_s3_output_bounce, sizeof(s_s3_output_bounce));
++    }
++#endif
+ 
+     return ret;
+ }
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 3806037..c841988 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -28,7 +28,7 @@ if(HUGINN_DEMO_FLG_BENCH AND HUGINN_FLIGHT_LOG_DEV_TEST)
+     message(FATAL_ERROR "DEMO FLG bench excludes the accelerated FLIGHT_LOG_DEV_TEST seam")
+ endif()
+ # Keep ESP-IDF app metadata consistent with the visible running revision.
+-set(PROJECT_VER "HuginnEIS Rev. 2.8")
++set(PROJECT_VER "HuginnEIS Rev. 2.9")
+ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+ add_compile_options("-Wno-attributes")
+ project(lvgl_porting)
+diff --git a/main/main.c b/main/main.c
+index efbb7cf..6ce6d88 100644
+--- a/main/main.c
++++ b/main/main.c
+@@ -107,7 +107,7 @@
+ #include "freertos/task.h"
+ #include "freertos/queue.h"
+ 
+-#define HUGINN_BUILD_ID "HuginnEIS Rev. 2.8"
++#define HUGINN_BUILD_ID "HuginnEIS Rev. 2.9"
+ 
+ /*
+  * The direct DEV HTTPS response shares the proven SD publication ceiling.

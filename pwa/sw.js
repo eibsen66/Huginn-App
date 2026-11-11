@@ -1,7 +1,7 @@
 // Asset-only offline cache. No device routes, credentials, evidence DB or ACK transport.
 const BUILD='__HUGINN_BUILD_ID__';
 const CACHE='huginn-pwa-p1-'+BUILD;
-const ASSETS=['./apple-touch-icon.png','./','./index.html','./style.css','./entry.mjs','./version-info.mjs','./adapter.mjs','./flight-evidence.mjs','./flight-storage.mjs','./manifest.webmanifest','./icons/huginn-logo-original.png','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-512.png','./icons/apple-touch-icon.png','./fixtures/catalog.json','./fixtures/complete.FLG','./fixtures/incomplete.FLG','./fixtures/ceiling.FLG'];
+const ASSETS=['./settings-v2.mjs','./settings.mjs','./settings-ui.mjs','./settings-package.mjs','./download-diagnostics.mjs','./wake-guard.mjs','./ui-model.mjs','./pairing-scanner.mjs','./vendor/jsQR-1.4.0.js','./vendor/jsQR-LICENSE.txt','./apple-touch-icon.png','./','./index.html','./style.css','./entry.mjs','./version-info.mjs','./adapter.mjs','./source.mjs','./flight-evidence.mjs','./flight-storage.mjs','./manifest.webmanifest','./icons/huginn-logo-original.png','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-512.png','./icons/apple-touch-icon.png','./fixtures/catalog.json','./fixtures/complete.FLG','./fixtures/incomplete.FLG','./fixtures/ceiling.FLG'];
 const allowed=new Set(ASSETS.map(path=>new URL(path,self.registration.scope).href));
 self.addEventListener('install',event=>event.waitUntil((async()=>{
   const cache=await caches.open(CACHE);

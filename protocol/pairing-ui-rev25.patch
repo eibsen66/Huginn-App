@@ -1,0 +1,43 @@
+--- a/main/huginn_flight_pairing_ui.c
++++ b/main/huginn_flight_pairing_ui.c
+@@ -138,7 +138,7 @@
+         message("Flight Courier authorization revoked.");
+         return;
+     }
+-    /* Confirmation is the physical replacement intent. Even if readiness or
++    /* Selecting Pair Flight Courier is the physical replacement intent. Even if readiness or
+      * presentation fails, the previously issued authorization stays revoked. */
+     if (hfa_active())
+         hfa_revoke();
+@@ -211,7 +211,8 @@
+ }
+ static void pair(lv_event_t *event) {
+     (void)event;
+-    confirm(false);
++    revoke_confirmation = false;
++    confirmed(event);
+ }
+ static void revoke(lv_event_t *event) {
+     (void)event;
+--- a/main/main.c
++++ b/main/main.c
+@@ -107,7 +107,7 @@
+ #include "freertos/task.h"
+ #include "freertos/queue.h"
+ 
+-#define HUGINN_BUILD_ID "HuginnEIS Rev. 2.4"
++#define HUGINN_BUILD_ID "HuginnEIS Rev. 2.5"
+ 
+ /*
+  * The direct DEV HTTPS response shares the proven SD publication ceiling.
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -28,7 +28,7 @@
+     message(FATAL_ERROR "DEMO FLG bench excludes the accelerated FLIGHT_LOG_DEV_TEST seam")
+ endif()
+ # Keep ESP-IDF app metadata consistent with the visible running revision.
+-set(PROJECT_VER "HuginnEIS Rev. 2.4")
++set(PROJECT_VER "HuginnEIS Rev. 2.5")
+ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+ add_compile_options("-Wno-attributes")
+ project(lvgl_porting)

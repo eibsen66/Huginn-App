@@ -1,0 +1,2 @@
+import {readFile,writeFile} from 'node:fs/promises';
+let s=await readFile('scripts/freeze-freshness-candidate.mjs','utf8');s=s.replaceAll('final-candidate-review.json','reviewed-candidate.json').replaceAll('focused-tests.log','final-focused-tests.log').replaceAll('rollback-final-3f1a35d5e2fe39bd','rollback-reviewed-3f1a35d5e2fe39bd');await writeFile('scripts/freeze-reviewed-freshness.mjs',s,{flag:'wx'});

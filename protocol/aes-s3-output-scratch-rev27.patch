@@ -1,0 +1,61 @@
+diff --git a/components/mbedtls/port/aes/dma/esp_aes_dma_core.c b/components/mbedtls/port/aes/dma/esp_aes_dma_core.c
+index b410fe3..085e99a 100644
+--- a/components/mbedtls/port/aes/dma/esp_aes_dma_core.c
++++ b/components/mbedtls/port/aes/dma/esp_aes_dma_core.c
+@@ -242,7 +242,20 @@ static int esp_aes_process_dma_ext_ram(esp_aes_context *ctx, const unsigned char
+     unsigned char *input_buf = NULL;
+     unsigned char *output_buf = NULL;
+     const unsigned char *dma_input;
+-    chunk_len = MIN(AES_MAX_CHUNK_WRITE_SIZE, len);
++    size_t chunk_limit = AES_MAX_CHUNK_WRITE_SIZE;
++#if CONFIG_IDF_TARGET_ESP32S3
++    /* The S3 can read DMA-capable PSRAM directly, but unaligned external
++     * output needs an internal bounce buffer. Keep this output-only path
++     * below the observed 1536-byte largest DMA block, leaving space for
++     * the DMA descriptors and allocator overhead. No persistent reserve
++     * or allocation retry: ordinary allocation failures still propagate.
++     * A whole AES block multiple preserves mode/stream state across chunks.
++     */
++    if (realloc_output && !realloc_input) {
++        chunk_limit = 1024;
++    }
++#endif
++    chunk_len = MIN(chunk_limit, len);
+ 
+     size_t input_alignment = 1;
+     size_t output_alignment = 1;
+@@ -292,7 +305,7 @@ static int esp_aes_process_dma_ext_ram(esp_aes_context *ctx, const unsigned char
+     }
+ 
+     while (len) {
+-        chunk_len = MIN(AES_MAX_CHUNK_WRITE_SIZE, len);
++        chunk_len = MIN(chunk_limit, len);
+ 
+         /* If input needs realloc then copy it, else use the input with offset*/
+         if (realloc_input) {
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index e81516d..04de0ef 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -28,7 +28,7 @@ if(HUGINN_DEMO_FLG_BENCH AND HUGINN_FLIGHT_LOG_DEV_TEST)
+     message(FATAL_ERROR "DEMO FLG bench excludes the accelerated FLIGHT_LOG_DEV_TEST seam")
+ endif()
+ # Keep ESP-IDF app metadata consistent with the visible running revision.
+-set(PROJECT_VER "HuginnEIS Rev. 2.6")
++set(PROJECT_VER "HuginnEIS Rev. 2.7")
+ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+ add_compile_options("-Wno-attributes")
+ project(lvgl_porting)
+diff --git a/main/main.c b/main/main.c
+index ac753d2..7770bef 100644
+--- a/main/main.c
++++ b/main/main.c
+@@ -107,7 +107,7 @@
+ #include "freertos/task.h"
+ #include "freertos/queue.h"
+ 
+-#define HUGINN_BUILD_ID "HuginnEIS Rev. 2.6"
++#define HUGINN_BUILD_ID "HuginnEIS Rev. 2.7"
+ 
+ /*
+  * The direct DEV HTTPS response shares the proven SD publication ceiling.

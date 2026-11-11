@@ -58,7 +58,7 @@ test('P2 real service-worker replacement and offline recovery',{timeout:240000},
   if(expression.startsWith('(await'))expression='(async()=>('+expression+'))()';
   let r;
   for(let attempt=0;attempt<5;attempt++){try{r=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});break;}catch(e){if(!expression.startsWith('new Promise')||!e.message.includes('navigated or closed')||attempt===4)throw e;await new Promise(resolve=>setTimeout(resolve,100));}}
-  assert.equal(r.exceptionDetails,undefined,JSON.stringify(r.exceptionDetails));return r.result.value;
+  if(r.exceptionDetails){const debug=await send('Runtime.evaluate',{expression:"({version:document.body.dataset.testVersion,states:[...document.querySelectorAll('.state')].map(s=>s.textContent),cap:document.querySelector('#capabilities')?.textContent,error:document.querySelector('#message')?.textContent,update:document.querySelector('#update-status')?.textContent,buttonDisabled:document.querySelector('#update')?.disabled})",returnByValue:true});console.log('UPDATE DEBUG '+JSON.stringify(debug.result?.value));}assert.equal(r.exceptionDetails,undefined,JSON.stringify(r.exceptionDetails));return r.result.value;
  }
  async function stop(){
   const exited=new Promise(r=>browser.once('exit',r));
@@ -102,14 +102,15 @@ test('P2 real service-worker replacement and offline recovery',{timeout:240000},
   // Browser target must finish navigation before the worker counts its window.
   await new Promise(r=>setTimeout(r,200));
   await evaluate("document.querySelector('#update').click()");
-  await evaluate(wait("document.querySelector('#message').textContent.includes('Close other PWA windows')"));
+  await evaluate(wait("document.querySelector('#update-status').textContent.includes('Lokaðu öðrum HuginnAPP')"));
   assert.equal(await evaluate('document.body.dataset.testVersion'),'A');
   const cacheTwo=await evaluate('caches.keys()');
   assert.ok(cacheTwo.includes('huginn-pwa-p1-p2-update-A')&&cacheTwo.includes('huginn-pwa-p1-p2-update-B'));
   results.push({test:'L',pass:true,activationBlocked:true});
   await send('Target.closeTarget',{targetId:second});
+  await new Promise(r=>setTimeout(r,500)); // allow closed client to leave the worker client inventory
   await evaluate("document.querySelector('#update').click()");
-  await evaluate(wait("document.body.dataset.testVersion==='B'&&document.querySelectorAll('.state').length===3&&[...document.querySelectorAll('.state')].every(s=>s.textContent==='VERIFIED LOCAL')"));
+  await evaluate(wait("document.body.dataset.testVersion==='B'&&document.querySelectorAll('.state').length===3&&[...document.querySelectorAll('.state')].every(s=>s.textContent===String.fromCharCode(83,243,116,116,32,111,103,32,115,97,110,110,114,101,121,110,116))"));
   await evaluate(init);const updated=await evaluate(inspect);assert.deepEqual(updated,baseline);
   const cacheB=await evaluate('caches.keys()');assert.deepEqual(cacheB,['huginn-pwa-p1-p2-update-B']);
   const completeCache=await evaluate("(async()=>{const c=await caches.open('huginn-pwa-p1-p2-update-B');return (await c.keys()).length;})()");
@@ -143,7 +144,7 @@ test('P2 real service-worker replacement and offline recovery',{timeout:240000},
   await evaluate('checkApp.close()');network=false;await stop();await start();
   await send('Network.enable');await send('Network.emulateNetworkConditions',{offline:true,latency:0,downloadThroughput:0,uploadThroughput:0});
   await send('Page.navigate',{url:origin+'/'});
-  await evaluate(wait("document.body.dataset.testVersion==='B'&&document.querySelectorAll('.state').length===3&&[...document.querySelectorAll('.state')].every(s=>s.textContent==='VERIFIED LOCAL')"));
+  await evaluate(wait("document.body.dataset.testVersion==='B'&&document.querySelectorAll('.state').length===3&&[...document.querySelectorAll('.state')].every(s=>s.textContent===String.fromCharCode(83,243,116,116,32,111,103,32,115,97,110,110,114,101,121,110,116))"));
   await evaluate(init);assert.deepEqual(await evaluate(inspect),baseline);
   assert.match(await evaluate("document.querySelector('.notice').textContent"),/NO-ACK.*FULL_ACK_GATE_PASS = false/s);
   results.push({tests:'G/H/N/O',pass:true,offlineRestart:true,version:'B'});

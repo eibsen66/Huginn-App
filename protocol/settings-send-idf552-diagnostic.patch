@@ -1,0 +1,22 @@
+--- a/components/esp_https_server/src/https_server.c
++++ b/components/esp_https_server/src/https_server.c
+@@ -5,6 +5,7 @@
+  */
+ 
+ #include <string.h>
++#include <errno.h>
+ #include "esp_https_server.h"
+ #include "esp_log.h"
+ #include "sdkconfig.h"
+@@ -138,6 +139,11 @@
+     esp_tls_t *tls = transport_ctx->tls;
+     assert(tls != NULL);
+     int ret = esp_tls_conn_write(tls, buf, buf_len);
++    const int send_errno = errno;
++    if (ret <= 0) {
++        ESP_LOGW(TAG, "send_nonpositive ret=%d errno_snapshot=%d requested=%u",
++                 ret, send_errno, (unsigned)buf_len);
++    }
+     if (ret < 0) {
+         esp_tls_error_handle_t error_handle;
+         if (esp_tls_get_error_handle(tls, &error_handle) == ESP_OK) {

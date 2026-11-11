@@ -1,0 +1,18 @@
+import {execFileSync} from 'node:child_process';
+import {writeFile,readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+const out='build/aes-scratch-candidate';
+const w=p=>p.replace('C:/','/mnt/c/');
+const run=args=>execFileSync('wsl',['-d','Ubuntu','--exec',...args],{encoding:'utf8',windowsHide:true});
+const common=['gcc','-std=c11','-D_POSIX_C_SOURCE=200112L','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-g'];
+run([...common,w('C:/HuginnAPP/'+out+'/host.c'),'-lcrypto','-pthread','-o',w('C:/HuginnAPP/'+out+'/host')]);
+const host=run([w('C:/HuginnAPP/'+out+'/host')]);await writeFile(out+'/host.log',host);console.log(host);
+const sdk='/mnt/c/esp/v5.5.2/esp-idf/components/heap/tlsf';
+run([...common,'-I'+sdk+'/include',w('C:/HuginnAPP/protocol/aes-scratch-tlsf-host.c'),sdk+'/tlsf.c','-o',w('C:/HuginnAPP/'+out+'/tlsf-host')]);
+const tlsf=run([w('C:/HuginnAPP/'+out+'/tlsf-host')]);await writeFile(out+'/tlsf-host.log',tlsf);console.log(tlsf);
+const result=execFileSync('C:/Espressif/tools/python/v5.5.2/venv/Scripts/python.exe',['protocol/check-aes-scratch-syntax.py'],{encoding:'utf8',windowsHide:true});console.log(result);
+const sha=b=>createHash('sha256').update(b).digest('hex');
+const files=['host.c','esp_aes_dma_core.c','esp_aes_dma_core.before.c','host.log','tlsf-host.log','syntax-checks.json'];const hashes={};
+for(const file of files)hashes[file]=sha(await readFile(out+'/'+file));
+for(const file of ['protocol/aes-scratch-host.c','protocol/aes-scratch-tlsf-host.c','protocol/aes-s3-output-scratch.patch','build/settings-send-review/settings-full-29502.json'])hashes[file]=sha(await readFile(file));
+await writeFile(out+'/checks.json',JSON.stringify({host:'PASS',tlsf_host:'PASS',xtensa_syntax:'PASS',target_build_run:false,physical_validation:false,hashes},null,2)+'\n');

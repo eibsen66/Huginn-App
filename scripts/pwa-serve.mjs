@@ -1,8 +1,8 @@
 import http from 'node:http';import https from 'node:https';
 import {readFile} from 'node:fs/promises';import {resolve,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-export const CSP="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'";
-const MIME={'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.webmanifest':'application/manifest+json','.png':'image/png','.FLG':'application/octet-stream'};
+export const CSP="default-src 'self'; connect-src 'self' https://192.168.4.1; script-src 'self'; style-src 'self'; img-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'";
+const MIME={'.txt':'text/plain; charset=utf-8','.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.webmanifest':'application/manifest+json','.png':'image/png','.FLG':'application/octet-stream'};
 export async function startServer({root=resolve(fileURLToPath(new URL('../dist/pwa/',import.meta.url))),host='127.0.0.1',port=8443,name=host,cert,key,testHttp=false}={}){
   if(testHttp&&host!=='127.0.0.1')throw new Error('HTTP_TEST_LOOPBACK_ONLY');
   if(!testHttp&&(!cert||!key))throw new Error('OWNER_SUPPLIED_TRUSTED_TLS_CERTIFICATE_AND_KEY_REQUIRED');

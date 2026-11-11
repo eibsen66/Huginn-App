@@ -1,0 +1,171 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -28,7 +28,7 @@
+     message(FATAL_ERROR "DEMO FLG bench excludes the accelerated FLIGHT_LOG_DEV_TEST seam")
+ endif()
+ # Keep ESP-IDF app metadata consistent with the visible running revision.
+-set(PROJECT_VER "HuginnEIS Rev. 2.5")
++set(PROJECT_VER "HuginnEIS Rev. 2.6")
+ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+ add_compile_options("-Wno-attributes")
+ project(lvgl_porting)
+--- a/main/main.c
++++ b/main/main.c
+@@ -107,7 +107,7 @@
+ #include "freertos/task.h"
+ #include "freertos/queue.h"
+ 
+-#define HUGINN_BUILD_ID "HuginnEIS Rev. 2.5"
++#define HUGINN_BUILD_ID "HuginnEIS Rev. 2.6"
+ 
+ /*
+  * The direct DEV HTTPS response shares the proven SD publication ceiling.
+--- a/components/mbedtls/port/huginn_aes_alloc_diag.c
++++ b/components/mbedtls/port/huginn_aes_alloc_diag.c
+@@ -5,6 +5,10 @@
+ #include "esp_timer.h"
+ #include "esp_log.h"
+ #include <errno.h>
++#include "esp_heap_caps.h"
++#include "esp_memory_utils.h"
++#include "esp_cache.h"
++#include "esp_private/esp_cache_private.h"
+ #include <limits.h>
+ #include <stdbool.h>
+ #include <string.h>
+@@ -26,6 +30,69 @@
+ static allocation_record records[RECORDS];
+ static unsigned used, dropped;
+ static char task_name[configMAX_TASK_NAME_LEN];
++/* One first failed output-allocation sample per request. No payload/pointers. */
++static struct {
++    multi_heap_info_t before, after;
++    size_t length, bytes, alignment;
++    uint32_t caps;
++    bool input_bounce, in_place, input_external, output_external;
++    int64_t before_us, after_us;
++    size_t cache_line, input_mod_cache, output_mod_cache;
++    unsigned input_mod16, output_mod16;
++    bool input_dma, output_dma;
++    int cache_result;
++} output_probe;
++static bool output_probe_pending, output_probe_failed;
++void huginn_aes_output_probe_constraints(const void *input, const void *output)
++{
++    const int saved_errno = errno;
++    if (!xPortInIsrContext() && active && owner == xTaskGetCurrentTaskHandle() && !output_probe_failed) {
++        /* Record only classifications and offsets, never raw addresses/data. */
++        output_probe.input_dma = esp_ptr_dma_capable(input) || esp_ptr_dma_ext_capable(input);
++        output_probe.output_dma = esp_ptr_dma_capable(output) || esp_ptr_dma_ext_capable(output);
++        output_probe.input_mod16 = (unsigned)((uintptr_t)input & 15U);
++        output_probe.output_mod16 = (unsigned)((uintptr_t)output & 15U);
++        output_probe.cache_line = 0;
++        output_probe.cache_result = ESP_OK;
++        if (esp_ptr_external_ram(input) || esp_ptr_external_ram(output)) {
++            output_probe.cache_result = esp_cache_get_alignment(MALLOC_CAP_SPIRAM, &output_probe.cache_line);
++        }
++        output_probe.input_mod_cache = esp_ptr_external_ram(input) && output_probe.cache_line
++            ? (uintptr_t)input % output_probe.cache_line : 0;
++        output_probe.output_mod_cache = esp_ptr_external_ram(output) && output_probe.cache_line
++            ? (uintptr_t)output % output_probe.cache_line : 0;
++    }
++    errno = saved_errno;
++}
++void huginn_aes_output_probe_before(size_t length, size_t bytes, size_t alignment, uint32_t caps,
++                                    bool input_bounce, bool in_place, bool input_external, bool output_external)
++{
++    const int saved_errno = errno;
++    if (!xPortInIsrContext() && active && owner == xTaskGetCurrentTaskHandle() && !output_probe_failed) {
++        output_probe.length=length; output_probe.bytes=bytes; output_probe.alignment=alignment;
++        output_probe.caps=caps; output_probe.input_bounce=input_bounce; output_probe.in_place=in_place;
++        output_probe.input_external=input_external; output_probe.output_external=output_external;
++        /* This API uses normal heap locks; never call it from a failed-allocation
++         * callback. Concurrent heap changes are possible between the samples. */
++        heap_caps_get_info(&output_probe.before,caps);
++        output_probe.before_us=esp_timer_get_time()-started;
++        output_probe_pending=true;
++    }
++    errno=saved_errno;
++}
++void huginn_aes_output_probe_after(bool failed)
++{
++    const int saved_errno=errno; /* first action after the original allocation */
++    if (!xPortInIsrContext() && active && owner == xTaskGetCurrentTaskHandle() && output_probe_pending) {
++        if (failed) {
++            heap_caps_get_info(&output_probe.after,output_probe.caps);
++            output_probe.after_us=esp_timer_get_time()-started;
++            output_probe_failed=true;
++        }
++        output_probe_pending=false;
++    }
++    errno=saved_errno;
++}
+ void huginn_aes_alloc_diag_begin(uint32_t id)
+ {
+     const int saved_errno = errno;
+@@ -34,6 +101,7 @@
+     if (owner == NULL) {
+         request_id = id;
+         used = dropped = 0;
++        output_probe_pending=output_probe_failed=false;
+         started = esp_timer_get_time();
+         const char *name = pcTaskGetName(NULL);
+         size_t i = 0;
+@@ -68,6 +136,17 @@
+         const uintptr_t task = (uintptr_t)owner;
+         owner = NULL; /* Reporting is outside the failure hook/AES hardware lock. */
+         active = false;
++        if (output_probe_failed) {
++            ESP_LOGI("HS2_DMA_HEAP", "site=bounce_output function=esp_aes_process_dma_ext_ram id=%u task=%lu bytes=%u caps=%u length=%u requested_alignment=%u input_bounce=%u in_place=%u input_external=%u output_external=%u before_free=%u before_largest=%u before_blocks=%u after_free=%u after_largest=%u after_blocks=%u before_us=%lld after_us=%lld input_dma=%u output_dma=%u cache_line=%u input_mod_cache=%u output_mod_cache=%u input_mod16=%u output_mod16=%u cache_result=%d",
++                (unsigned)request_id,(unsigned long)task,(unsigned)output_probe.bytes,(unsigned)output_probe.caps,(unsigned)output_probe.length,(unsigned)output_probe.alignment,
++                (unsigned)output_probe.input_bounce,(unsigned)output_probe.in_place,(unsigned)output_probe.input_external,(unsigned)output_probe.output_external,
++                (unsigned)output_probe.before.total_free_bytes,(unsigned)output_probe.before.largest_free_block,(unsigned)output_probe.before.free_blocks,
++                (unsigned)output_probe.after.total_free_bytes,(unsigned)output_probe.after.largest_free_block,(unsigned)output_probe.after.free_blocks,
++                (long long)output_probe.before_us,(long long)output_probe.after_us,
++                (unsigned)output_probe.input_dma,(unsigned)output_probe.output_dma,
++                (unsigned)output_probe.cache_line,(unsigned)output_probe.input_mod_cache,(unsigned)output_probe.output_mod_cache,
++                output_probe.input_mod16,output_probe.output_mod16,output_probe.cache_result);
++        }
+         ESP_LOGI("HS2_ALLOC", "summary id=%u records=%u dropped=%u task=%lu name=%s",
+                  (unsigned)request_id, used, dropped, (unsigned long)task, task_name);
+         for (unsigned i = 0; i < used; ++i) {
+--- a/components/mbedtls/port/include/huginn_aes_alloc_diag.h
++++ b/components/mbedtls/port/include/huginn_aes_alloc_diag.h
+@@ -1,7 +1,14 @@
+-#pragma once
+-#include <stddef.h>
+-#include <stdint.h>
+-void huginn_aes_alloc_diag_begin(uint32_t id);
+-void huginn_aes_alloc_diag_failure(size_t bytes, uint32_t caps, const char *site,
+-                                   const char *function, unsigned line);
+-void huginn_aes_alloc_diag_end(void);
++#pragma once
++#include <stdbool.h>
++#include <stddef.h>
++#include <stdint.h>
++void huginn_aes_alloc_diag_begin(uint32_t id);
++void huginn_aes_alloc_diag_failure(size_t bytes, uint32_t caps, const char *site,
++                                   const char *function, unsigned line);
++void huginn_aes_alloc_diag_end(void);
++
++void huginn_aes_output_probe_before(size_t length, size_t bytes, size_t alignment, uint32_t caps,
++                                    bool input_bounce, bool in_place, bool input_external, bool output_external);
++void huginn_aes_output_probe_after(bool failed);
++
++void huginn_aes_output_probe_constraints(const void *input, const void *output);
+--- a/components/mbedtls/port/aes/dma/esp_aes_dma_core.c
++++ b/components/mbedtls/port/aes/dma/esp_aes_dma_core.c
+@@ -273,7 +273,13 @@
+     }
+ 
+     if (realloc_output) {
++        /* Normal request context, never an allocator callback. No policy change. */
++        huginn_aes_output_probe_constraints(input, output);
++        huginn_aes_output_probe_before(len, chunk_len, output_alignment, output_heap_caps,
++                                       realloc_input, input == output,
++                                       esp_ptr_external_ram(input), esp_ptr_external_ram(output));
+         output_buf = heap_caps_aligned_alloc(output_alignment, chunk_len, output_heap_caps);
++        huginn_aes_output_probe_after(output_buf == NULL);
+         if (output_buf == NULL) {
+             huginn_aes_alloc_diag_failure(chunk_len, output_heap_caps, "bounce_output", __func__, __LINE__);
+             mbedtls_platform_zeroize(output, len);

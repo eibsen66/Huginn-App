@@ -1,0 +1,4 @@
+import {readFile,writeFile,mkdir} from 'node:fs/promises';import {execFileSync} from 'node:child_process';
+const out='build/immediate-edit-preview-review';await mkdir(out,{recursive:true});
+const tests=['flight-list-error-diagnostics','settings-read-diagnostics','reconnect-source','pwa-reconnect-browser','pwa-settings-browser','pwa-auto-pairing-browser','settings-body-boundaries','pwa-storage-integrity','pwa-update-recovery','pwa-icons','flight-evidence','pwa-network-return-browser','settings-preview-lifecycle','settings-workflow-help','settings-v2-protocol','pwa-immediate-edit-browser'].map(n=>'tests/'+n+'.test.mjs');
+let text,code=0;try{text=execFileSync(process.execPath,['--test','--test-concurrency=1','--test-reporter=spec',...tests],{encoding:'utf8',windowsHide:true,timeout:240000});}catch(e){text=(e.stdout||'')+(e.stderr||'');code=e.status??1;}await writeFile(out+'/focused-tests.log',text);console.log(text.slice(-3500));if(code)process.exitCode=code;

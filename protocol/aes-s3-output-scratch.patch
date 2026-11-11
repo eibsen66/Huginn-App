@@ -1,0 +1,35 @@
+diff --git a/components/mbedtls/port/aes/dma/esp_aes_dma_core.c b/components/mbedtls/port/aes/dma/esp_aes_dma_core.c
+index b410fe3..085e99a 100644
+--- a/components/mbedtls/port/aes/dma/esp_aes_dma_core.c
++++ b/components/mbedtls/port/aes/dma/esp_aes_dma_core.c
+@@ -242,7 +242,20 @@ static int esp_aes_process_dma_ext_ram(esp_aes_context *ctx, const unsigned char
+     unsigned char *input_buf = NULL;
+     unsigned char *output_buf = NULL;
+     const unsigned char *dma_input;
+-    chunk_len = MIN(AES_MAX_CHUNK_WRITE_SIZE, len);
++    size_t chunk_limit = AES_MAX_CHUNK_WRITE_SIZE;
++#if CONFIG_IDF_TARGET_ESP32S3
++    /* The S3 can read DMA-capable PSRAM directly, but unaligned external
++     * output needs an internal bounce buffer. Keep this output-only path
++     * below the observed 1536-byte largest DMA block, leaving space for
++     * the DMA descriptors and allocator overhead. No persistent reserve
++     * or allocation retry: ordinary allocation failures still propagate.
++     * A whole AES block multiple preserves mode/stream state across chunks.
++     */
++    if (realloc_output && !realloc_input) {
++        chunk_limit = 1024;
++    }
++#endif
++    chunk_len = MIN(chunk_limit, len);
+ 
+     size_t input_alignment = 1;
+     size_t output_alignment = 1;
+@@ -292,7 +305,7 @@ static int esp_aes_process_dma_ext_ram(esp_aes_context *ctx, const unsigned char
+     }
+ 
+     while (len) {
+-        chunk_len = MIN(AES_MAX_CHUNK_WRITE_SIZE, len);
++        chunk_len = MIN(chunk_limit, len);
+ 
+         /* If input needs realloc then copy it, else use the input with offset*/
+         if (realloc_input) {

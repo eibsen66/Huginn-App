@@ -1,0 +1,30 @@
+--- a/Huginn/Firmware/huginn/main/huginn_settings_v2.inc
++++ b/Huginn/Firmware/huginn/main/huginn_settings_v2.inc
+@@ -3,7 +3,8 @@
+  * All large work objects and JSON allocations live in PSRAM, not task stacks.
+  */
+ #if defined(HUGINN_DEV_HTTPS_AVAILABLE)
+-#include "cJSON.h"
++#include "cJSON.h"
++#include <errno.h>
+ #include "freertos/FreeRTOS.h"
+ #define HS2_BODY_MAX 32768U
+ #define HS2_RESPONSE_MAX 131072U
+@@ -1049,7 +1050,16 @@
+         if (hs2_get(j->response, "ok") && cJSON_IsFalse(hs2_get(j->response, "ok"))) {
+             httpd_resp_set_status(request, "409 Conflict");
+         }
+-        result = httpd_resp_sendstr(request, response);
++        const size_t response_bytes = strlen(response);
++        const int64_t send_start_us = esp_timer_get_time();
++        ESP_LOGI("HS2_SEND", "begin bytes=%u", (unsigned)response_bytes);
++        errno = 0;
++        result = httpd_resp_send(request, response, (ssize_t)response_bytes);
++        const int send_errno = errno;
++        const int64_t send_elapsed_us = esp_timer_get_time() - send_start_us;
++        ESP_LOGI("HS2_SEND", "end bytes=%u result=%d errno_snapshot=%d elapsed_us=%lld",
++                 (unsigned)response_bytes, (int)result, send_errno,
++                 (long long)send_elapsed_us);
+     }
+     free(response);
+     hs2_release(j);

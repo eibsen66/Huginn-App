@@ -1,0 +1,137 @@
+diff --git a/main/huginn_settings_v2.inc b/main/huginn_settings_v2.inc
+index db97ab2..28b9bfe 100644
+--- a/main/huginn_settings_v2.inc
++++ b/main/huginn_settings_v2.inc
+@@ -619,12 +619,22 @@ static bool hs2_edit(Hs2Config *c, const char *id, const cJSON *value) {
+     Hs2Edit e = {id, value, c, false, false};
+     return hs2_fields(c, hs2_assign, &e) && e.found && e.valid;
+ }
+-static bool hs2_snapshot(Hs2Config *c) {
++enum {
++    HS2_DENIAL_NONE, HS2_DENIAL_MODAL, HS2_DENIAL_LIVE,
++    HS2_DENIAL_PERSISTENCE, HS2_DENIAL_SNAPSHOT_ALLOC, HS2_DENIAL_SNAPSHOT_BASELINE
++};
++static bool hs2_snapshot(Hs2Config *c, uint8_t *denial_reason) {
+     HuginnCommittedConfigSnapshot *s = hs2_alloc(sizeof(*s));
+     if (!s) {
++        if (denial_reason) {
++            *denial_reason = HS2_DENIAL_SNAPSHOT_ALLOC;
++        }
+         return false;
+     }
+     bool ok = huginn_committed_config_snapshot_copy(s);
++    if (!ok && denial_reason) {
++        *denial_reason = HS2_DENIAL_SNAPSHOT_BASELINE;
++    }
+     if (ok) {
+         c->settings = s->settings;
+         c->ports = s->ports_configuration;
+@@ -635,6 +645,21 @@ static bool hs2_snapshot(Hs2Config *c) {
+     free(s);
+     return ok;
+ }
++/* Preserve original admission order and short-circuit evaluation. */
++static uint8_t hs2_admission(Hs2Config *base) {
++    if (g_settings_modal) {
++        return HS2_DENIAL_MODAL;
++    }
++    if (!huginn_live_authority_available()) {
++        return HS2_DENIAL_LIVE;
++    }
++    if (huginn_settings_persistence_inhibited()) {
++        return HS2_DENIAL_PERSISTENCE;
++    }
++    uint8_t reason = HS2_DENIAL_NONE;
++    (void)hs2_snapshot(base, &reason);
++    return reason;
++}
+ static bool hs2_resolve_engine(Hs2Config *c) {
+     if (c->engine.initialized && !strcmp(c->engine.profile.model, c->settings.engine_name) &&
+         c->engine.profile.cylinder_count == c->settings.cylinders &&
+@@ -763,6 +788,7 @@ typedef struct {
+     int refs, cancelled;
+     uint64_t epoch;
+     bool apply;
++    uint8_t denial_reason;
+     char device[18], digest[65];
+     cJSON *input, *response;
+ } Hs2Job;
+@@ -812,8 +838,8 @@ static void hs2_owner(void *arg) {
+         hs2_fail(j, "OUT_OF_MEMORY");
+         goto done;
+     }
+-    if (g_settings_modal || !huginn_live_authority_available() ||
+-        huginn_settings_persistence_inhibited() || !hs2_snapshot(base)) {
++    j->denial_reason = hs2_admission(base);
++    if (j->denial_reason != HS2_DENIAL_NONE) {
+         hs2_fail(j, "SETTINGS_BUSY_OR_UNAVAILABLE");
+         goto done;
+     }
+@@ -898,7 +924,7 @@ static void hs2_owner(void *arg) {
+             hs2_fail(j, "SAVE_OR_READBACK_FAILED");
+             goto done;
+         }
+-        if (!hs2_snapshot(candidate)) {
++        if (!hs2_snapshot(candidate, NULL)) {
+             cJSON_Delete(diff);
+             hs2_fail(j, "READBACK_UNAVAILABLE");
+             goto done;
+@@ -938,6 +964,24 @@ static void huginn_settings_v2_json_init(void) {
+     cJSON_Hooks hooks = {hs2_json_alloc, free};
+     cJSON_InitHooks(&hooks);
+ }
++static const char *hs2_denial_name(uint8_t reason) {
++    switch (reason) {
++        case HS2_DENIAL_MODAL: return "modal";
++        case HS2_DENIAL_LIVE: return "live_unavailable";
++        case HS2_DENIAL_PERSISTENCE: return "persistence_inhibited";
++        case HS2_DENIAL_SNAPSHOT_ALLOC: return "snapshot_alloc_failed";
++        case HS2_DENIAL_SNAPSHOT_BASELINE: return "snapshot_baseline_missing";
++        default: return NULL;
++    }
++}
++static void hs2_log_get_denial(bool get, uint8_t reason) {
++    const char *name = get ? hs2_denial_name(reason) : NULL;
++    if (name) {
++        const int saved_errno = errno;
++        ESP_LOGW("HS2_ADMISSION", "GET denied reason=%s", name);
++        errno = saved_errno;
++    }
++}
+ static esp_err_t huginn_settings_v2_handler(httpd_req_t *request) {
+     hfa_headers_t headers;
+     uint64_t epoch = 0;
+@@ -1050,6 +1094,7 @@ static esp_err_t huginn_settings_v2_handler(httpd_req_t *request) {
+         httpd_resp_set_hdr(request, "Cache-Control", "no-store");
+         if (hs2_get(j->response, "ok") && cJSON_IsFalse(hs2_get(j->response, "ok"))) {
+             httpd_resp_set_status(request, "409 Conflict");
++            hs2_log_get_denial(get, j->denial_reason);
+         }
+         const size_t response_bytes = strlen(response);
+         uint32_t measurement_id = 0;
+diff --git a/main/main.c b/main/main.c
+index 6ce6d88..02283a8 100644
+--- a/main/main.c
++++ b/main/main.c
+@@ -107,7 +107,7 @@
+ #include "freertos/task.h"
+ #include "freertos/queue.h"
+ 
+-#define HUGINN_BUILD_ID "HuginnEIS Rev. 2.9"
++#define HUGINN_BUILD_ID "HuginnEIS Rev. 2.10"
+ 
+ /*
+  * The direct DEV HTTPS response shares the proven SD publication ceiling.
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index c841988..267cde7 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -28,7 +28,7 @@ if(HUGINN_DEMO_FLG_BENCH AND HUGINN_FLIGHT_LOG_DEV_TEST)
+     message(FATAL_ERROR "DEMO FLG bench excludes the accelerated FLIGHT_LOG_DEV_TEST seam")
+ endif()
+ # Keep ESP-IDF app metadata consistent with the visible running revision.
+-set(PROJECT_VER "HuginnEIS Rev. 2.9")
++set(PROJECT_VER "HuginnEIS Rev. 2.10")
+ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+ add_compile_options("-Wno-attributes")
+ project(lvgl_porting)

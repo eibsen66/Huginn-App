@@ -1,3 +1,4 @@
+import {assertApprovedFirmware,DOWNLOAD_ONLY_REFERENCE} from './firmware-reference.mjs';
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync,mkdtempSync,rmSync,readdirSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {execFileSync} from 'node:child_process';import {X509Certificate,createHash} from 'node:crypto';
 import {createFlightCourier,automaticSelection,COURIER_OPERATIONS} from '../flight-courier.mjs';import {fixture,source} from './flight-fixtures.mjs';import {pair,tls,metadata,wire,MockHTTPS,HostCourier,ref,etag} from './courier-network-model.mjs';
 const root=new X509Certificate(readFileSync(new URL('../mobile/trust/dev/huginn_dev_root_ca_cert.pem',import.meta.url))),leaf=new X509Certificate(readFileSync(new URL('./fixtures/tls/dev-server-public.pem',import.meta.url))),pin='6cffc99004265d8b768a46b5721c314464f0ccdd6f64596b4086664002b1dcd8';
@@ -73,7 +74,7 @@ T(68,'SQLite quota/write error never creates outbox',()=>host(async h=>{h.store.
 T(69,'storage gate denied creates no pending ACK',()=>host(async h=>{await assert.rejects(h.download(),/LOCAL_GATE/);assert.equal(h.store.one('SELECT count(*) AS n FROM courier_ack').n,0);},{storage:{space:false}}));
 T(70,'owner qualification remains empty',()=>assert.deepEqual(JSON.parse(read('mobile/qualification.json')).qualified_builds,[]));
 T(71,'source: normal native full ACK gate false',()=>{assert.match(java,/fullGate\(ref,packaged\)/);assert.match(swift,/fullGate\(ref,packaged\)/);assert.match(read('android/app/src/main/java/is/huginn/foundation/dev/CourierQualification.java'),/qualified_builds/);assert.match(read('ios/App/App/CourierQualification.swift'),/!rows.isEmpty else \{ return false/);});
-T(72,'firmware clean and pinned',()=>{assert.equal(execFileSync('git',['-c','safe.directory=C:/Huginn-Muninn','-C','C:/Huginn-Muninn','rev-parse','HEAD'],{encoding:'utf8',windowsHide:true}).trim(),'7ef63a95d2f9fe44579bccfc141d2af019691ef4');assert.equal(execFileSync('git',['-c','safe.directory=C:/Huginn-Muninn','-C','C:/Huginn-Muninn','status','--short'],{encoding:'utf8',windowsHide:true}).trim(),'');});
+T(72,'reviewed download-only firmware and exact retained inventory',()=>assertApprovedFirmware(DOWNLOAD_ONLY_REFERENCE));
 // G73/G74/G75 are the separately executed existing parser/mobile, real IndexedDB
 // harness and app regression suites. Their actual results are recorded in review.
 T(76,'source: network body independent of Flight length',()=>{assert.match(android,/r\.body=new byte\[n\]/);assert.match(ios,/data.count>cap-body.count/);assert.doesNotMatch(native,/readAllBytes|Data\(contentsOf:.*evidence|Buffer\.concat/);});

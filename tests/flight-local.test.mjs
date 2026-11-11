@@ -14,7 +14,7 @@ test('launcher source HTTP security contract',async()=>{
   assert.match(await rawRequest(8768,'/style.css'),/Content-Type: text\/css/);
   assert.match(await rawRequest(8768,'/flight-compatibility.json'),/Content-Type: application\/json/);
   assert.match(await rawRequest(8768,'/'),/<title>Huginn Connectivity Test/);
-  const child=spawn('powershell.exe',['-NoProfile','-ExecutionPolicy','Bypass','-File','C:/Huginn-App/launcher/test-source-host.ps1','-Development'],{windowsHide:true});
+  const child=spawn('powershell.exe',['-NoProfile','-ExecutionPolicy','Bypass','-File','C:/HuginnAPP/launcher/test-source-host.ps1','-Development'],{windowsHide:true});
   let output='';child.stdout.on('data',b=>output+=b);child.stderr.on('data',b=>output+=b);
   const code=await new Promise(r=>child.on('exit',r));assert.equal(code,1);assert.match(output,/failed on fixed port 8768/);assert.doesNotMatch(output,/READY/);
  }finally{host.kill();}

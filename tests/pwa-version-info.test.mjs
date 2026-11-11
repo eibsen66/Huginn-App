@@ -33,8 +33,8 @@ test('worker identity handler has no activation/cache writes',async()=>{
 });
 test('diagnostics do not register or trigger update',async()=>{const e=env();e.serviceWorker=new Proxy(e.serviceWorker,{get(t,k){if(!['controller','getRegistration'].includes(k))throw Error('WORKER_MUTATION');return t[k];}});assert.equal((await inspectVersions(A,A,e)).controller.build,A);});
 test('HTML/entry mismatch is independent',async()=>{assert.equal((await inspectVersions(A,B,env())).htmlMismatch,true);assert.equal((await inspectVersions('Unknown',A,env())).mismatch,false);});
-test('UI is collapsed and refresh displays mismatch without reload',async()=>{
- const html=await readFile(new URL('../pwa/index.html',import.meta.url),'utf8');assert.match(html,/<details class="app-info">/);
+test('System Info exposes version information and refresh displays mismatch without reload',async()=>{
+ const html=await readFile(new URL('../pwa/index.html',import.meta.url),'utf8');assert.match(html,/<section class="app-info" id="version-storage">/);assert.match(html,/id="system-panel"[^]*id="technical"/);
  const elements=new Map(),document={getElementById:id=>{if(!elements.has(id))elements.set(id,{textContent:'',disabled:false});return elements.get(id);}};
  await bindVersionInformation({appBuild:B,htmlBuild:B,document,inspect:(a,h)=>inspectVersions(a,h,env())});
  assert.equal(elements.get('info-app').textContent,B);assert.equal(elements.get('info-warning').textContent,'Application and worker versions differ');await elements.get('info-refresh').onclick();

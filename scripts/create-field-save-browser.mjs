@@ -1,0 +1,3 @@
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+let prefix=await readFile('tests/pwa-settings-browser.test.mjs','utf8');prefix=prefix.slice(0,prefix.indexOf('  await evaluate(`globalThis.calls='));prefix=prefix.replace('active PWA settings, synthetic transport and temporary browser storage','per-field and bulk saves, late edits, uncertain writes and explicit reconciliation').replace('timeout:45000','timeout:90000').replace('let deviceBusy=true','let deviceBusy=false');
+await mkdir('build/field-save-review/screenshots',{recursive:true});await writeFile('tests/pwa-field-save-browser.test.mjs',prefix+await readFile('protocol/field-save-browser-tail.js','utf8'));

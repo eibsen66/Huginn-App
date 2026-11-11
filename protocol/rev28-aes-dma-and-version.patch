@@ -1,0 +1,186 @@
+diff --git a/components/mbedtls/port/aes/dma/esp_aes_dma_core.c b/components/mbedtls/port/aes/dma/esp_aes_dma_core.c
+index 085e99a..bf559dc 100644
+--- a/components/mbedtls/port/aes/dma/esp_aes_dma_core.c
++++ b/components/mbedtls/port/aes/dma/esp_aes_dma_core.c
+@@ -22,6 +22,9 @@
+ #include "hal/cache_ll.h"
+ 
+ #include "esp_aes_dma_priv.h"
++#if CONFIG_IDF_TARGET_ESP32S3
++#include "esp_crypto_shared_gdma.h"
++#endif
+ #include "esp_aes_internal.h"
+ #include "esp_crypto_dma.h"
+ 
+@@ -246,13 +249,13 @@ static int esp_aes_process_dma_ext_ram(esp_aes_context *ctx, const unsigned char
+ #if CONFIG_IDF_TARGET_ESP32S3
+     /* The S3 can read DMA-capable PSRAM directly, but unaligned external
+      * output needs an internal bounce buffer. Keep this output-only path
+-     * below the observed 1536-byte largest DMA block, leaving space for
++     * below the observed 736-byte largest DMA block, leaving space for
+      * the DMA descriptors and allocator overhead. No persistent reserve
+      * or allocation retry: ordinary allocation failures still propagate.
+      * A whole AES block multiple preserves mode/stream state across chunks.
+      */
+     if (realloc_output && !realloc_input) {
+-        chunk_limit = 1024;
++        chunk_limit = 512;
+     }
+ #endif
+     chunk_len = MIN(chunk_limit, len);
+@@ -961,6 +964,13 @@ cleanup:
+  */
+ static DRAM_ATTR crypto_dma_desc_t s_stream_in_desc;
+ static DRAM_ATTR crypto_dma_desc_t s_stream_out_desc;
++#if CONFIG_IDF_TARGET_ESP32S3
++/* Accessed only while the existing AES/SHA hardware lock is held. DMA must
++ * finish or be stopped/reset before this pair may be reused. Other chains
++ * retain their original heap allocation. Internal DMA memory, never PSRAM. */
++static DMA_ATTR __attribute__((aligned(8))) crypto_dma_desc_t s_s3_short_block_desc[2];
++_Static_assert(sizeof(crypto_dma_desc_t) == 12, "S3 descriptor size changed");
++#endif
+ static DRAM_ATTR uint8_t s_stream_in[AES_BLOCK_BYTES];
+ static DRAM_ATTR uint8_t s_stream_out[AES_BLOCK_BYTES];
+ 
+@@ -1017,6 +1027,10 @@ int esp_aes_process_dma(esp_aes_context *ctx, const unsigned char *input, unsign
+     crypto_dma_desc_t *out_desc_tail = NULL; /* pointer to the final output descriptor */
+     crypto_dma_desc_t *block_desc = NULL, *block_in_desc = NULL, *block_out_desc = NULL;
+     size_t crypto_dma_desc_num = 0;
++    bool block_desc_heap_owned = false;
++#if CONFIG_IDF_TARGET_ESP32S3
++    bool dma_started = false;
++#endif
+     unsigned stream_bytes = len % AES_BLOCK_BYTES; // bytes which aren't in a full block
+     unsigned block_bytes = len - stream_bytes;     // bytes which are in a full block
+     unsigned blocks = (block_bytes / AES_BLOCK_BYTES) + ((stream_bytes > 0) ? 1 : 0);
+@@ -1093,7 +1107,16 @@ int esp_aes_process_dma(esp_aes_context *ctx, const unsigned char *input, unsign
+         crypto_dma_desc_num = dma_desc_get_required_num(block_bytes, DMA_DESCRIPTOR_BUFFER_MAX_SIZE_16B_ALIGNED);
+ 
+         /* Allocate both in and out descriptors to save a malloc/free per function call */
+-        block_desc = heap_caps_aligned_calloc(8, crypto_dma_desc_num * 2, sizeof(crypto_dma_desc_t), MALLOC_CAP_DMA);
++#if CONFIG_IDF_TARGET_ESP32S3
++        if (crypto_dma_desc_num == 1) {
++            block_desc = s_s3_short_block_desc;
++            memset(block_desc, 0, sizeof(s_s3_short_block_desc));
++        } else
++#endif
++        {
++            block_desc = heap_caps_aligned_calloc(8, crypto_dma_desc_num * 2, sizeof(crypto_dma_desc_t), MALLOC_CAP_DMA);
++            block_desc_heap_owned = block_desc != NULL;
++        }
+         if (block_desc == NULL) {
+             huginn_aes_alloc_diag_failure(crypto_dma_desc_num * 2 * sizeof(crypto_dma_desc_t), MALLOC_CAP_DMA, "block_descriptors", __func__, __LINE__);
+             mbedtls_platform_zeroize(output, len);
+@@ -1171,6 +1194,9 @@ int esp_aes_process_dma(esp_aes_context *ctx, const unsigned char *input, unsign
+         goto cleanup;
+     }
+ 
++#if CONFIG_IDF_TARGET_ESP32S3
++    dma_started = true;
++#endif
+     aes_hal_transform_dma_start(blocks);
+ 
+     if (esp_aes_dma_wait_complete(use_intr, out_desc_tail) < 0) {
+@@ -1185,12 +1211,16 @@ int esp_aes_process_dma(esp_aes_context *ctx, const unsigned char *input, unsign
+             if(esp_cache_msync((void*)output, block_bytes, ESP_CACHE_MSYNC_FLAG_DIR_M2C) != ESP_OK) {
+                 mbedtls_platform_zeroize(output, len);
+                 ESP_LOGE(TAG, "Cache sync failed for the output in external RAM");
+-                return -1;
++                ret = -1;
++                goto cleanup;
+             }
+         }
+     }
+ #endif
+     aes_hal_transform_dma_finish();
++#if CONFIG_IDF_TARGET_ESP32S3
++    dma_started = false;
++#endif
+ 
+     if (stream_bytes > 0) {
+         memcpy(output + block_bytes, s_stream_out, stream_bytes);
+@@ -1198,10 +1228,20 @@ int esp_aes_process_dma(esp_aes_context *ctx, const unsigned char *input, unsign
+     }
+ 
+ cleanup:
++#if CONFIG_IDF_TARGET_ESP32S3
++    if (dma_started) {
++        /* Still under AES_LOCK. Stop/reset both channels before zeroizing
++         * buffers, freeing heap descriptors, or releasing reusable storage. */
++        esp_crypto_shared_gdma_abort();
++        aes_hal_transform_dma_finish();
++    }
++#endif
+     if (ret != 0) {
+         mbedtls_platform_zeroize(output, len);
+     }
+-    free(block_desc);
++    if (block_desc_heap_owned) {
++        free(block_desc);
++    }
+     return ret;
+ }
+ 
+diff --git a/components/mbedtls/port/crypto_shared_gdma/esp_crypto_shared_gdma.c b/components/mbedtls/port/crypto_shared_gdma/esp_crypto_shared_gdma.c
+index 3943760..63442cd 100644
+--- a/components/mbedtls/port/crypto_shared_gdma/esp_crypto_shared_gdma.c
++++ b/components/mbedtls/port/crypto_shared_gdma/esp_crypto_shared_gdma.c
+@@ -278,3 +278,19 @@ void esp_crypto_shared_gdma_free()
+ 
+     esp_crypto_sha_aes_lock_release();
+ }
++
++#if CONFIG_IDF_TARGET_ESP32S3
++/* Internal AES error cleanup only: caller holds the AES/SHA hardware lock.
++ * No allocation, channel deletion, lock reacquisition, or automatic retry. */
++void esp_crypto_shared_gdma_abort(void)
++{
++    if (tx_channel != NULL) {
++        ESP_ERROR_CHECK(gdma_stop(tx_channel));
++        ESP_ERROR_CHECK(gdma_reset(tx_channel));
++    }
++    if (rx_channel != NULL) {
++        ESP_ERROR_CHECK(gdma_stop(rx_channel));
++        ESP_ERROR_CHECK(gdma_reset(rx_channel));
++    }
++}
++#endif
+diff --git a/components/mbedtls/port/include/esp_crypto_shared_gdma.h b/components/mbedtls/port/include/esp_crypto_shared_gdma.h
+index d5e96d2..5957909 100644
+--- a/components/mbedtls/port/include/esp_crypto_shared_gdma.h
++++ b/components/mbedtls/port/include/esp_crypto_shared_gdma.h
+@@ -69,3 +69,8 @@ void esp_crypto_shared_gdma_free(void);
+ #ifdef __cplusplus
+ }
+ #endif
++
++#if CONFIG_IDF_TARGET_ESP32S3
++/* Internal only; AES/SHA lock must already be held. */
++void esp_crypto_shared_gdma_abort(void);
++#endif
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 04de0ef..3806037 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -28,7 +28,7 @@ if(HUGINN_DEMO_FLG_BENCH AND HUGINN_FLIGHT_LOG_DEV_TEST)
+     message(FATAL_ERROR "DEMO FLG bench excludes the accelerated FLIGHT_LOG_DEV_TEST seam")
+ endif()
+ # Keep ESP-IDF app metadata consistent with the visible running revision.
+-set(PROJECT_VER "HuginnEIS Rev. 2.7")
++set(PROJECT_VER "HuginnEIS Rev. 2.8")
+ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+ add_compile_options("-Wno-attributes")
+ project(lvgl_porting)
+diff --git a/main/main.c b/main/main.c
+index 7770bef..efbb7cf 100644
+--- a/main/main.c
++++ b/main/main.c
+@@ -107,7 +107,7 @@
+ #include "freertos/task.h"
+ #include "freertos/queue.h"
+ 
+-#define HUGINN_BUILD_ID "HuginnEIS Rev. 2.7"
++#define HUGINN_BUILD_ID "HuginnEIS Rev. 2.8"
+ 
+ /*
+  * The direct DEV HTTPS response shares the proven SD publication ceiling.

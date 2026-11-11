@@ -1,0 +1,19 @@
+"""Focused syntax checks of unapplied proposed files; no target build/link."""
+from pathlib import Path
+import json,shlex,subprocess
+root=Path('C:/HuginnEIS/Huginn/Firmware/huginn');out=Path('C:/HuginnAPP/build/settings-send-152413-review');build=root/'build-rev2.5-20261105'
+commands=json.loads((build/'compile_commands.json').read_text());results=[]
+for part in ['port/aes/dma/esp_aes_dma_core.c','port/huginn_aes_alloc_diag.c']:
+ c=next(c for c in commands if c['file'].replace('\\','/').endswith('/'+part));args=shlex.split(c['command'].replace('\\"','"'),posix=False);args=[a[1:-1] if a.startswith('"') and a.endswith('"') else a for a in args]
+ clean=[];skip=False
+ for a in args:
+  if skip:skip=False;continue
+  if a in ['-o','-MF','-MT','-MQ']:skip=True;continue
+  if a in ['-c','-MD','-MMD','-MP'] or a.replace('\\','/')==c['file'].replace('\\','/'):continue
+  clean.append(a)
+ clean.insert(1,'-I'+str(out/'proposed/port/include'))
+ clean+=['-fsyntax-only','-Wall','-Werror=misleading-indentation',str(out/'proposed'/part)]
+ p=subprocess.run(clean,cwd=build,capture_output=True,text=True);(out/(Path(part).name+'.syntax.log')).write_text(p.stdout+p.stderr)
+ results.append({'file':part,'exit_code':p.returncode,'command':clean,'mode':'syntax only, unapplied files; retained generated Rev. 2.5 headers'})
+ print(part,p.returncode,p.stderr[-450:])
+(out/'target-syntax.json').write_text(json.dumps(results,indent=2));assert all(r['exit_code']==0 for r in results)

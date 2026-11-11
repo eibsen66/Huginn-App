@@ -13,6 +13,7 @@ test('P2 quota persistence and two-window concurrency',{timeout:240000},async()=
  const original=JSON.parse(await readFile(new URL('pwa/fixtures/catalog.json',root)));
  const originalBytes=await Promise.all(original.fixtures.map(f=>readFile(new URL('pwa/fixtures/'+f.file,root))));
  const assets=new Map([
+  ['/source.mjs',{type:'text/javascript',body:await readFile(new URL('pwa/source.mjs',root))}],
   ['/',{type:'text/html',body:'<!doctype html><title>P2 LOCAL TEST ONLY</title>'}],
   ['/flight-storage.mjs',{type:'text/javascript',body:await readFile(new URL('flight-storage.mjs',root))}],
   ['/flight-evidence.mjs',{type:'text/javascript',body:await readFile(new URL('flight-evidence.mjs',root))}],
@@ -21,6 +22,8 @@ test('P2 quota persistence and two-window concurrency',{timeout:240000},async()=
   ['/adapter.mjs',{type:'text/javascript',body:(await readFile(new URL('pwa/adapter.mjs',root),'utf8')).replace("from './flight-storage.mjs'","from './storage-faults.mjs'")}]
  ]);
  assets.set('/storage-faults.mjs',{type:'text/javascript',body:await readFile(new URL('tests/pwa-storage-faults.mjs',root))});
+ for(const name of ['settings-v2.mjs','settings.mjs','settings-ui.mjs','download-diagnostics.mjs','wake-guard.mjs','ui-model.mjs','pairing-scanner.mjs'])assets.set('/'+name,{type:'text/javascript',body:await readFile(new URL('pwa/'+name,root))});
+ assets.set('/settings-package.mjs',{type:'text/javascript',body:await readFile(new URL('settings-package.mjs',root))});
  const entry=(await readFile(new URL('pwa/entry.mjs',root),'utf8')).replace('openPwa({catalog})','openPwa({catalog,name:globalThis.p2UiDatabase})');
  assets.set('/entry.mjs',{type:'text/javascript',body:entry});
  assets.set('/version-info.mjs',{type:'text/javascript',body:await readFile(new URL('pwa/version-info.mjs',root))});
@@ -87,20 +90,20 @@ test('P2 quota persistence and two-window concurrency',{timeout:240000},async()=
    await evaluate("testApp.import(testInputs[0])");
    assets.set('/fixtures/catalog.json',{type:'application/json',body:JSON.stringify(v.catalog)});
    await evaluate("globalThis.p2UiDatabase="+JSON.stringify(name)+";Object.defineProperty(navigator,'serviceWorker',{value:undefined,configurable:true});Object.defineProperty(navigator.storage,'persist',{value:"+ (mode==='unavailable'?'undefined':mode==='throws'?"async()=>{throw Error('P2_PERSIST_EXCEPTION')}":'async()=>'+(mode==='granted')) +",configurable:true});import('./entry.mjs')");
-   await evaluate("new Promise((r,j)=>{let n=0;const t=setInterval(()=>{if(document.querySelector('.state')?.textContent==='VERIFIED LOCAL'){clearInterval(t);r(true);}else if(++n>100){clearInterval(t);j(Error('UI_INIT'));}},50)})");
+   await evaluate("new Promise((r,j)=>{let n=0;const t=setInterval(()=>{if(document.querySelector('.state')?.textContent==='Sótt og sannreynt'){clearInterval(t);r(true);}else if(++n>100){clearInterval(t);j(Error('UI_INIT'));}},50)})");
    const initial=await evaluate("document.querySelector('#persist').disabled");
    assert.equal(initial,mode==='unavailable');
    if(mode!=='unavailable')await evaluate("document.querySelector('#persist').onclick()");
    const ui=await evaluate("({status:document.querySelector('#persistence').textContent,message:document.querySelector('#message').textContent})");
-   if(mode==='granted')assert.match(ui.status,/granted; user deletion and device loss remain possible/);
-   if(mode==='denied')assert.match(ui.status,/not granted. Export an independent copy/);
-   if(mode==='throws')assert.match(ui.message,/Stopped: P2_PERSIST_EXCEPTION/);
-   await evaluate("document.querySelector('#flights button').onclick()");
+   if(mode==='granted')assert.match(ui.status,/Vafrinn samþykkti betri varðveislu skráa/);
+   if(mode==='denied')assert.match(ui.status,/Vafrinn samþykkti ekki beiðnina/);
+   if(mode==='throws'){assert.ok(ui.message.length>0);assert.equal(await evaluate("document.querySelector('#technical-code').textContent"),'P2_PERSIST_EXCEPTION');}
+   await evaluate("document.querySelector('.flight details button').onclick()");
    const after=await evaluate("document.querySelector('#persist').disabled");
    for(let repeat=0;repeat<3;repeat++){
-    await evaluate("document.querySelector('#flights button').onclick()");
+    await evaluate("document.querySelector('.flight details button').onclick()");
     assert.equal(await evaluate("document.querySelector('#persist').disabled"),mode==='unavailable','capability lost after repeated verification');
-    await evaluate("document.querySelectorAll('#flights button')[1].onclick()");
+    await evaluate("document.querySelector('.flight .record-actions button').onclick()");
     assert.equal(await evaluate("document.querySelector('#persist').disabled"),mode==='unavailable','capability lost after export preparation');
     if(mode!=='unavailable')await evaluate("document.querySelector('#persist').onclick()");
     assert.equal(await evaluate("document.querySelector('#persist').disabled"),mode==='unavailable','supported persistence disabled after request');

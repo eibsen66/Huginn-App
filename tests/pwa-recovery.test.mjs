@@ -13,6 +13,7 @@ test('P2 isolated deterministic recovery A-J',{timeout:240000},async()=>{
  const original=JSON.parse(await readFile(new URL('pwa/fixtures/catalog.json',root)));
  const originalBytes=await Promise.all(original.fixtures.map(f=>readFile(new URL('pwa/fixtures/'+f.file,root))));
  const assets=new Map([
+  ['/source.mjs',{type:'text/javascript',body:await readFile(new URL('pwa/source.mjs',root))}],
   ['/',{type:'text/html',body:'<!doctype html><title>P2 LOCAL TEST ONLY</title>'}],
   ['/flight-storage.mjs',{type:'text/javascript',body:await readFile(new URL('flight-storage.mjs',root))}],
   ['/flight-evidence.mjs',{type:'text/javascript',body:await readFile(new URL('flight-evidence.mjs',root))}],

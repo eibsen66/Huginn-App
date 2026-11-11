@@ -1,0 +1,2 @@
+import {readFile,writeFile} from 'node:fs/promises';
+const p='pwa/settings-ui.mjs';let s=await readFile(p,'utf8');s=s.replace("saving?stage==='checking'?", "saving?stage==='loading'?t('Sæki núverandi stillingar…','Retrieving current settings…'):stage==='checking'?");s=s.replace("if(!keepDraft)savedDraft=null;uiEpoch++;", "if(!keepDraft)savedDraft=null;diagnosticResult.textContent='';uiEpoch++;");s=s.replace("const settings=results.find(r=>r.operation==='retrieve');",'');s=s.replaceAll('sækðu núverandi','sæktu núverandi');await writeFile(p,s);

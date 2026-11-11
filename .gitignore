@@ -65,3 +65,9 @@ ios/App/DerivedData/
 !mobile/trust/dev/huginn_dev_root_ca.cer
 !tests/fixtures/tls/dev-server-public.pem
 !android/app/src/androidTest/assets/dev-server-public.pem
+
+
+# Local owner evidence/identifiers; kept intact outside publication.
+/tests/fixtures/selected-huginn-recording.json
+/REV2.8-AND-SETTINGS-FRESHNESS-REVIEW.md
+/protocol/REV2.8-OWNER-HANDOFF.md

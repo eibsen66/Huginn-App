@@ -1,0 +1,33 @@
+  assert.equal(await evaluate("document.querySelector('#source-consent')===null&&document.querySelector('#source-connect')===null"),true);
+  await evaluate(`globalThis.qrPayload='{invalid';globalThis.jsQR=()=>({data:qrPayload});globalThis.tracks=[];Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{const c=document.createElement('canvas');c.width=c.height=320;c.getContext('2d').fillRect(0,0,320,320);const s=c.captureStream(15);tracks.push(...s.getTracks());return s;}});document.querySelector('#open-connection').click();document.querySelector('#source-scan').click();`);
+  await wait("document.querySelector('#pairing-code').textContent==='PAIR_JSON'&&!document.querySelector('#source-scan').disabled");
+  assert.deepEqual(await evaluate('calls'),[]);
+  assert.equal(await evaluate("tracks.every(t=>t.readyState==='ended')"),true);
+  // Supported QR but expired server authorization: one attempt, then retry in app.
+  await evaluate(`qrPayload=${JSON.stringify(pair)};globalThis.expireFlights=true;document.querySelector('#source-scan').click();`);
+  await wait("document.querySelector('#pairing-code').textContent==='AUTH_REQUIRED'&&!document.querySelector('#source-scan').disabled");
+  assert.equal(await evaluate('calls.length'),1);
+  assert.match(await evaluate("document.querySelector('#message').textContent"),/útrunnin|afturkölluð/);
+  // Cancel while the automatic connection's fetch ignores its AbortSignal.
+  await evaluate("globalThis.expireFlights=false;globalThis.delayFlights=true;document.querySelector('#source-scan').click()");
+  await wait("typeof releaseOldFlight==='function'&&!document.querySelector('#pairing-cancel').hidden");
+  assert.equal(await evaluate('calls.length'),2);
+  await evaluate("document.querySelector('#pairing-cancel').click();globalThis.delayFlights=false;releaseOldFlight(new Response('{}',{status:200}))");
+  await wait("!document.querySelector('#source-scan').disabled");
+  assert.notEqual(await evaluate("document.querySelector('.connection-card').dataset.state"),'connected');
+  // Queued duplicate callbacks must not create a second connection/list request.
+  await evaluate("document.querySelector('#source-scan').click();document.querySelector('#settings-tab').click()");
+  await wait("document.querySelector('.connection-card').dataset.state==='connected'&&document.querySelector('#connection-panel').hidden");
+  assert.equal(await evaluate('calls.length'),3);
+  assert.equal(await evaluate("document.querySelector('#huginn-tab').getAttribute('aria-selected')"),'true');
+  assert.equal(await evaluate("document.querySelector('#device-files').hidden"),false);
+  assert.equal(await evaluate("document.querySelector('#source-pairing').value"),'');
+  assert.equal(await evaluate("tracks.every(t=>t.readyState==='ended')"),true);
+  // The working Reconnect action remains available after transport loss.
+  await evaluate("globalThis.rejectFlights=true;document.querySelector('#fetch-recordings').click()");
+  await wait("!document.querySelector('#open-connection').hidden");
+  await evaluate("globalThis.rejectFlights=false;document.querySelector('#open-connection').click()");
+  await wait("document.querySelector('.connection-card').dataset.state==='connected'");
+  assert.equal(await evaluate("calls.filter(p=>p.endsWith('/apply')).length"),0);
+ }finally{ws?.close();browser.kill();protocol.close();await new Promise(r=>server.close(r));}
+});

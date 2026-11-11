@@ -152,7 +152,7 @@ function validateSettings(settings) {
   }
 }
 
-export async function verifySettingsPackage(rawBytes) {
+export async function verifySettingsPackage(rawBytes, { sourceProduct = "Muninn" } = {}) {
   const originalBytes = new Uint8Array(rawBytes);
   const root = exactObject(parsePackage(originalBytes), "package", ROOT_KEYS);
   if (stringValue(root.schema, "schema") !== SETTINGS_PACKAGE_SCHEMA) {
@@ -163,7 +163,8 @@ export async function verifySettingsPackage(rawBytes) {
   }
   const provenance = exactObject(root.provenance, "provenance", ["created_at_utc", "product"]);
   const createdAt = timestampValue(provenance.created_at_utc);
-  if (stringValue(provenance.product, "provenance.product") !== "Muninn") {
+  if (!["Muninn", "HuginnAPP"].includes(sourceProduct) ||
+      stringValue(provenance.product, "provenance.product") !== sourceProduct) {
     fail("provenance product is invalid");
   }
   validateSettings(root.settings);

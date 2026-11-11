@@ -1,0 +1,5 @@
+# Canonical PWA identity hashes raw input bytes. Preserve the reviewed files exactly.
+pwa/** -text
+flight-evidence.mjs -text
+flight-storage.mjs -text
+settings-package.mjs -text

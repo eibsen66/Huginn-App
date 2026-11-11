@@ -1,0 +1,12 @@
+import {readFile,writeFile,readdir} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+const root='C:/HuginnEIS/Huginn/Firmware/huginn',tools='C:/HuginnEIS/Tools',out='build/rev29-review',sha=b=>createHash('sha256').update(b).digest('hex');
+async function tree(dir,prefix=''){const r={};for(const d of await readdir(dir+'/'+prefix,{withFileTypes:true})){const p=prefix+d.name;if(d.isDirectory()){if(d.name!=='.git'&&d.name!=='__pycache__')Object.assign(r,await tree(dir,p+'/'));}else r[p]=sha(await readFile(dir+'/'+p));}return r;}
+for(const name of ['ENV','BUILD','VERIFY','FLASH','CAPTURE','READ-DIAGNOSTIC']){const p='C:/HuginnEIS/REV2.9-OWNER-'+name+'.ps1';const b=await readFile(p);await writeFile(out+'/initial/REV2.9-OWNER-'+name+'.ps1',b,{flag:'wx'});await writeFile(p,b.toString().replaceAll('build-rev2.9-20261108','build-rev2.9-20261108-review2').replaceAll('REV2.9-PREPARATION','REV2.9-PREPARATION-REVIEW2'));}
+for(const name of ['release','capture','read_diagnostic']){const p=tools+'/rev29_'+name+'.py',s=await readFile(p,'utf8');await writeFile(out+'/initial/rev29_'+name+'.py',s,{flag:'w'});await writeFile(p,s.replaceAll('build-rev2.9-20261108','build-rev2.9-20261108-review2').replaceAll("EVIDENCE=Path('C:/HuginnEIS/Evidence/REV2.9-PREPARATION')","EVIDENCE=Path('C:/HuginnEIS/Evidence/REV2.9-PREPARATION-REVIEW2')"));}
+const d=JSON.parse(await readFile(tools+'/rev29-diagnostic-inputs.json'));d.local.mbedtls['port/aes/dma/esp_aes_dma_core.c']=sha(await readFile(root+'/components/mbedtls/port/aes/dma/esp_aes_dma_core.c'));await writeFile(tools+'/rev29-diagnostic-inputs.json',JSON.stringify(d,null,2)+'\n');
+const functional=JSON.parse(await readFile(tools+'/rev29-functional-inputs.json'));for(const p of Object.keys(functional.source_pins))functional.source_pins[p]=sha(await readFile(p));for(const p of Object.keys(functional.review_evidence))functional.review_evidence[p]=sha(await readFile(p));await writeFile(tools+'/rev29-functional-inputs.json',JSON.stringify(functional,null,2)+'\n');
+const preserved=JSON.parse(await readFile(tools+'/rev29-preserved-inputs.json'));
+for(const dir of [root+'/build-rev2.9-20261108','C:/HuginnEIS/Evidence/REV2.9-PREPARATION','C:/HuginnAPP/'+out+'/initial'])for(const [p,h]of Object.entries(await tree(dir)))preserved[dir+'/'+p]=h;
+await writeFile(tools+'/rev29-preserved-inputs.json',JSON.stringify(preserved,null,2)+'\n');
+console.log('Final review2 inputs sealed; initial successful candidate retained and superseded. No build/COM access.');

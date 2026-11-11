@@ -112,16 +112,21 @@ export class FlightStorage {
     catch(e){await this.transaction(['downloads'],'readwrite',async tx=>{const s=tx.objectStore('downloads'),d=await req(s.get(E));
       if(d){d.phase='QUARANTINED';await req(s.put(d,E));}});throw e;}
   }
-  async importEvidence(E) {
+  async importEvidence(E,{shouldPublish=()=>true,signal}={}) {
     const {raw,download}=await this.readEvidence(E), validated=await validateEvidence(raw,download.metadata);
-    return this.transaction(['downloads','flights'],'readwrite',async tx=>{
+    let abortTransaction;
+    try{return await this.transaction(['downloads','flights'],'readwrite',async tx=>{
+      abortTransaction=()=>{try{tx.abort();}catch{}};
+      signal?.addEventListener('abort',abortTransaction,{once:true});
+      if(signal?.aborted){abortTransaction();fail('CANCELLED');}
       const ds=tx.objectStore('downloads'),fs=tx.objectStore('flights'),current=await req(ds.get(E));
+      if(!shouldPublish())fail('CANCELLED');
       if(!current||current.phase==='QUARANTINED'||current.committed_offset!==download.committed_offset)fail('STAGING_CHANGED');
       const existing=await req(fs.get(E));if(existing)return existing;
       const flight={session:sessionKey(current.metadata),metadata:current.metadata,validation:validated.parsed,
         local_state:'STORED_LOCAL_AWAITING_VERIFICATION',ack_status:'NONE',conflict:current.conflict,owner_accepted:false};
       await req(fs.add(flight,E));current.phase='IMPORTED';await req(ds.put(current,E));return flight;
-    });
+    });}finally{if(abortTransaction)signal?.removeEventListener('abort',abortTransaction);}
   }
   async reopen(E){const f=await this.get('flights',E);if(!f)fail('FLIGHT_NOT_IMPORTED');
     const {raw}=await this.readEvidence(E);await validateEvidence(raw,f.metadata);return f;}

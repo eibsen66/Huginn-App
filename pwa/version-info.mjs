@@ -44,16 +44,23 @@ export async function inspectVersions(appBuild,htmlBuild,{serviceWorker=globalTh
 }
 export function bindVersionInformation({appBuild,htmlBuild,document=globalThis.document,inspect=inspectVersions}){
  const el=id=>document.getElementById(id),label=v=>v.status==='Known'?v.build:v.status;
+ const buttons=['info-refresh','info-refresh-huginn'].map(el).filter(Boolean);
+ const summaries=['info-result','info-result-huginn'].map(el).filter(Boolean);
+ const t=(is,en)=>(document.documentElement?.lang||'en').startsWith('is')?is:en;
+ const summary=text=>{for(const node of summaries)node.textContent=text;};
  let refreshing=false;
  async function refresh(){
  if(refreshing)return;refreshing=true;
- el('info-refresh').disabled=true;
+ for(const button of buttons)button.disabled=true;
+ summary(t('Athuga útgáfu og geymslu…','Checking version and storage…'));
  try{
  const r=await inspect(appBuild,htmlBuild);
  el('info-app').textContent=r.appBuild;el('info-controller').textContent=label(r.controller);el('info-active').textContent=label(r.active);el('info-waiting').textContent=label(r.waiting);el('info-cache').textContent=r.cache;
  el('info-warning').textContent=[r.htmlMismatch?'HTML and application versions differ':'',r.mismatch?'Application and worker versions differ':''].filter(Boolean).join('. ');
- }catch{el('info-warning').textContent='Version inspection unavailable';}
- finally{refreshing=false;el('info-refresh').disabled=false;}
+ const mismatch=r.htmlMismatch||r.mismatch||(r.active.status==='Known'&&r.active.build!==r.appBuild);
+ summary(mismatch?t('Útgáfur samræmast ekki. Sjá System Info.','Versions do not match. See System Info.'):r.controller.status==='Known'&&r.active.status==='Known'&&r.cache.includes('Complete expected shell')?t('Útgáfur apps og offline-þjónustu samræmast. Offline-skelin er tiltæk.','App and offline service versions match. The offline shell is available.'):t('Ekki tókst að staðfesta alla útgáfu- og geymslureiti. Sjá System Info.','Some version or storage details could not be confirmed. See System Info.'));
+ }catch{el('info-warning').textContent='Version inspection unavailable';summary(t('Ekki tókst að athuga útgáfu og geymslu.','Could not check version and storage.'));}
+ finally{refreshing=false;for(const button of buttons)button.disabled=false;}
  }
- el('info-refresh').onclick=refresh;return refresh();
+ for(const button of buttons)button.onclick=refresh;return refresh();
 }

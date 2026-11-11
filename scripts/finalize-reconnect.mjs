@@ -1,0 +1,12 @@
+import {readFile,writeFile} from 'node:fs/promises';
+let s=await readFile('pwa/entry.mjs','utf8');
+s=s.replace(' Þegar pörun er lokið, lokaðu Flight Courier og Connectivity áður en þú sækir stillingar.','');
+s=s.replace("el('source-status').textContent=connectionLabel(connection);", "el('source-status').textContent=document.documentElement.lang.startsWith('is')?connectionLabel(connection):({connected:'Connected to HuginnEIS',connecting:'Connecting to HuginnEIS…',lost:'Connection to HuginnEIS lost',disconnected:'Not connected to HuginnEIS'}[connection]);");
+s=s.replace("el('source-scan').disabled=!app||busy||", "el('source-scan').disabled=!app||busy||resuming||");
+s=s.replace("el('source-connect').disabled=!app||busy||", "el('source-connect').disabled=!app||busy||resuming||");
+s=s.replace("el(id).disabled=busy||scanner.active;", "el(id).disabled=busy||resuming||scanner.active;");
+s=s.replace("el('manual-connect').disabled=!app||busy;", "el('manual-connect').disabled=!app||busy||resuming;");
+s=s.replace("b.disabled=busy||connection!=='connected'", "b.disabled=busy||resuming||connection!=='connected'");
+s=s.replace('settingsUI.controls(busy);','settingsUI.controls(busy||resuming);');
+s=s.replace("setConnection('failure');throw e;}});", "setConnection('failure');if(active.hasAuthorization())feedback(t('Tenging rofnaði. Veldu Tengjast aftur.','Connection lost. Choose Reconnect.'),safeCode(e));}});");
+await writeFile('pwa/entry.mjs',s);

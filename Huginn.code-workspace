@@ -1,0 +1,23 @@
+{
+  "folders": [
+    {
+      "name": "HuginnEIS",
+      "path": "C:/HuginnEIS"
+    },
+    {
+      "name": "HuginnAPP",
+      "path": "C:/HuginnAPP"
+    },
+    {
+      "name": "Muninn",
+      "path": "C:/Muninn"
+    }
+  ],
+  "settings": {
+    "task.allowAutomaticTasks": "off",
+    "terminal.integrated.defaultProfile.windows": "PowerShell"
+  },
+  "extensions": {
+    "recommendations": []
+  }
+}
