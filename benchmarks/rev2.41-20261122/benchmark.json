@@ -1,0 +1,59 @@
+{
+  "schema": "huginn.benchmark.v1",
+  "revision": "2.41",
+  "firmware_build_id": "rev2.41-prepared-6b60bfac6af77900",
+  "firmware_bytes": 1995040,
+  "firmware_sha256": "6b60bfac6af77900f9c310b58b25900dcb325b42d326facc3563b1d2ec625197",
+  "app_build": "a2f8f176d210e2e6",
+  "cold3h_seconds": 180.48804389999998,
+  "cold1h_seconds": 59.3414639,
+  "preserved3h_resume_seconds": 41.303992300000004,
+  "one_hour_30_seconds_achieved": false,
+  "iPhone_acceptance": "NOT_ESTABLISHED; Chrome is not iPhone acceptance",
+  "flight_release": false,
+  "validation": "Real COM5; whole size/SHA,IndexedDB,cold full browser reopen,controlled resume PASS for both synthetic files; preserved interrupted3h prefix+completion PASS.",
+  "cases": [
+    {
+      "label": "preserved3h_resume",
+      "file": "F237003.FLG",
+      "bytes": 30880608,
+      "sha256": "c568d61f32f497098a4d3ed3ba039e355777350310f36a4158b4cb37255b4bcf",
+      "start_offset": 30670848,
+      "prepare_s": 31.591898999989034,
+      "range_phase_s": 1.069677999973297,
+      "final_import_verification_s": 3.693300000011921,
+      "total_click_to_verified_s": 41.303992300000004,
+      "cold_full_browser_reopen_verify_s": 4.364700699999994,
+      "BUSY_resubmissions": 0
+    },
+    {
+      "label": "cold3h",
+      "file": "F237003.FLG",
+      "bytes": 30880608,
+      "sha256": "c568d61f32f497098a4d3ed3ba039e355777350310f36a4158b4cb37255b4bcf",
+      "start_offset": 0,
+      "prepare_s": 31.623027999997138,
+      "range_phase_s": 141.25542699998618,
+      "final_import_verification_s": 3.805699999988079,
+      "total_click_to_verified_s": 180.48804389999998,
+      "cold_full_browser_reopen_verify_s": 4.248388399999996,
+      "BUSY_resubmissions": 0
+    },
+    {
+      "label": "cold1h",
+      "file": "F237001.FLG",
+      "bytes": 10297088,
+      "sha256": "e4d37439a200399862dcdb37a53a8ab2b9eb18e4c8d177fe85e4bf0d164284ab",
+      "start_offset": 0,
+      "prepare_s": 10.818010999977588,
+      "range_phase_s": 45.783566000044345,
+      "final_import_verification_s": 1.3187000000476836,
+      "total_click_to_verified_s": 59.3414639,
+      "cold_full_browser_reopen_verify_s": 1.2430574999999953,
+      "BUSY_resubmissions": 0
+    }
+  ],
+  "scope": "App-only COM5 readback and stable boot; partition table matches retained seven-entry baseline; bootloader unmeasured/unwritten; not full-baseline PASS.",
+  "privacy": "No private flight recordings,pairings,tokens,profiles,NVS or flash dumps in this release.",
+  "BUSY_contract": "503 remains; preserve cache only for transient BUSY with current epoch. App max1 resubmission per Range/3 per preparation;200ms abortable wait. No timeout increase or integrity bypass."
+}

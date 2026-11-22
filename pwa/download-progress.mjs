@@ -1,5 +1,6 @@
 import {friendlySize} from './ui-model.mjs';
 export function preparationPresentation(p){
+ if(p.state==='COURIER BUSY')return {text:'HuginnEIS upptekið — bíð einu sinni eftir næsta hluta…',percent:null};
  if(p.state==='RECEIVING')return {text:'Tek á móti gögnum…',percent:null};
  if(p.state!=='PREPARING')return null;
  const title={snapshot_before:'Skoða skrá…',hash:'Undirbý skrá…',snapshot_after:'Staðfesti skrá…'}[p.stage]||'Undirbý skrá…';

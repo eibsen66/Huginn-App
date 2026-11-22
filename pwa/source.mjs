@@ -127,12 +127,33 @@ export function createBrowserSource({origin,selectedOrigin,profile,pairing,fetch
   },
   async detail(id,{signal,onProgress}={}){
    need(/^[0-9a-f]{32}$/.test(id),'SESSION');preparedHandles.delete(id);const {value:m,response,etag,prepared}=await request('/api/v1/flights/'+id,{signal,frameRequest:{kind:'detail',prepared:preparedTransfer},onProgress});try{identity(m);need(m.session_id===id,'SESSION');
-   encodeMetadata(m);checkTransferSize(Number(m.physical_bytes));need(await metadataSha256(m)===m.metadata_sha256,'METADATA_DIGEST_MISMATCH');need((etag??response.headers.get('etag'))===evidenceEtag(m),'ETAG');if(preparedTransfer){need(typeof prepared==='string'&&/^[0-9a-f]{32}$/.test(prepared),'PREPARATION_REQUIRED');preparedHandles.set(id,{handle:prepared,etag:evidenceEtag(m)});}return Object.freeze(m);}catch(e){throw transferError(e,{stage:'DETAIL',httpStatus:response.status,dispatchAttempted:true});}
+   encodeMetadata(m);checkTransferSize(Number(m.physical_bytes));need(await metadataSha256(m)===m.metadata_sha256,'METADATA_DIGEST_MISMATCH');need((etag??response.headers.get('etag'))===evidenceEtag(m),'ETAG');if(preparedTransfer){need(typeof prepared==='string'&&/^[0-9a-f]{32}$/.test(prepared),'PREPARATION_REQUIRED');preparedHandles.set(id,{handle:prepared,etag:evidenceEtag(m),busyRemaining:3});}return Object.freeze(m);}catch(e){throw transferError(e,{stage:'DETAIL',httpStatus:response.status,dispatchAttempted:true});}
   },
   async readRange(m,start,end,{signal,onProgress}={}){
    need(Number.isSafeInteger(start)&&Number.isSafeInteger(end)&&start>=0&&end>=start&&end-start<TRANSPORT_RANGE_BYTES&&end<Number(m.physical_bytes),'RANGE');
    const ready=preparedHandles.get(m.session_id);if(preparedTransfer)need(ready?.etag===evidenceEtag(m),'PREPARATION_REQUIRED');
-   const {value:bytes,response:r,stream,etag}=await request('/api/v1/flights/'+m.session_id+'/evidence',{signal,json:false,stage:'RANGE',requestedOffset:start,limit:end-start+1,frameRequest:{kind:'range',start,end,total:m.physical_bytes},onProgress,headers:{...(preparedTransfer?{Accept:'application/octet-stream','X-Huginn-Prepared':ready.handle}:{}),Range:'bytes='+start+'-'+end,'If-Match':evidenceEtag(m)}});
+   // BUSY is a typed, zero-wait SD-owner scheduling response, not evidence.
+   // One resubmission per Range and three per preparation; never retry transport,
+   // timeout, integrity, auth, malformed or unrecognized server failures.
+   const epoch=generation;let result,firstBusy;
+   for(let attempt=0;attempt<2;attempt++){
+    try{result=await request('/api/v1/flights/'+m.session_id+'/evidence',{signal,json:false,stage:'RANGE',requestedOffset:start,limit:end-start+1,frameRequest:{kind:'range',start,end,total:m.physical_bytes},onProgress,headers:{...(preparedTransfer?{Accept:'application/octet-stream','X-Huginn-Prepared':ready.handle}:{}),Range:'bytes='+start+'-'+end,'If-Match':evidenceEtag(m)}});break;}catch(e){
+     const d=e?.diagnostic;
+     if(!preparedTransfer||d?.httpStatus!==503||d?.errorBodyStatus!=='recognized'||d?.serverErrorCode!=='COURIER_BUSY')throw e;
+     firstBusy??=e;if(attempt||ready.busyRemaining<=0)throw firstBusy;
+     ready.busyRemaining--;
+     onProgress?.({state:'COURIER BUSY',offset:start,physical_bytes:Number(m.physical_bytes),busyRetry:1,busyRemaining:ready.busyRemaining});
+     // Two normal100ms recorder periods. Does not extend a request deadline.
+     await new Promise((resolve,reject)=>{
+      let timer;const abort=()=>{clearTimeout(timer);signal?.removeEventListener('abort',abort);reject(Object.assign(Error('CANCELLED'),{name:'AbortError'}));};
+      if(signal?.aborted){abort();return;}
+      signal?.addEventListener('abort',abort,{once:true});timer=setTimeout(()=>{signal?.removeEventListener('abort',abort);resolve();},200);
+     });
+     need(!closed&&!revoked&&epoch===generation&&!signal?.aborted,'CANCELLED');
+     onProgress?.({state:'DOWNLOADING',offset:start,physical_bytes:Number(m.physical_bytes)});
+    }
+   }
+   const {value:bytes,response:r,stream,etag}=result;
    try{need((stream?r.status===200&&etag===evidenceEtag(m):r.status===206&&r.headers.get('etag')===evidenceEtag(m)&&r.headers.get('accept-ranges')==='bytes'&&r.headers.get('content-range')===`bytes ${start}-${end}/${m.physical_bytes}`&&r.headers.get('content-length')===String(end-start+1))&&bytes.length===end-start+1,'RANGE_RESPONSE');return bytes;}catch(e){throw transferError(e,{stage:'RANGE',httpStatus:r.status,dispatchAttempted:true,requestedOffset:start,expectedBytes:end-start+1,receivedBytes:bytes.length});}
   }
  });

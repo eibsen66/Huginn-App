@@ -15,5 +15,5 @@ for(const [file,input] of inputs){
  const raw=['settings.mjs','settings-v2.mjs'].includes(file)?Buffer.from(input.toString().replace("'../settings-package.mjs'","'./settings-package.mjs'")):['index.html','entry.mjs','sw.js'].includes(file)?Buffer.from(input.toString().replaceAll('__HUGINN_BUILD_ID__',version)):input;
  const path=join(out,file);await mkdir(resolve(path,'..'),{recursive:true});await writeFile(path,raw);hashes[file]=hash(raw);
 }
-await writeFile(join(out,'build.json'),JSON.stringify({schema:'huginn.pwa.build',revision:'2.37',version,identity_method:'canonical-build-v2',full_ack_gate_pass:false,files:hashes},null,2)+'\n');
+await writeFile(join(out,'build.json'),JSON.stringify({schema:'huginn.pwa.build',revision:'2.41',version,identity_method:'canonical-build-v2',full_ack_gate_pass:false,files:hashes},null,2)+'\n');
 console.log('PWA build '+version+'; ACK false. Native assets untouched.');
