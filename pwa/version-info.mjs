@@ -8,7 +8,7 @@ export async function queryWorker(worker,scope,{Channel=globalThis.MessageChanne
  c.port1.onmessage=e=>{
  const r=e.data;
  try{
- if(!r||r.type!=='HUGINN_VERSION_REPLY'||r.protocol!==1||r.id!==id||!valid(r.build)||r.scope!==scope||r.cache!=='huginn-pwa-p1-'+r.build||!Array.isArray(r.assets)||!r.assets.length||r.assets.length>32||new Set(r.assets).size!==r.assets.length||r.assets.some(p=>typeof p!=='string'||!p.startsWith('./')||new URL(p,scope).origin!==new URL(scope).origin))throw Error();
+ if(!r||r.type!=='HUGINN_VERSION_REPLY'||r.protocol!==1||r.id!==id||!valid(r.build)||r.scope!==scope||r.cache!=='huginn-pwa-p1-'+r.build||!Array.isArray(r.assets)||!r.assets.length||r.assets.length>64||new Set(r.assets).size!==r.assets.length||r.assets.some(p=>typeof p!=='string'||!p.startsWith('./')||new URL(p,scope).origin!==new URL(scope).origin))throw Error();
  done({status:'Known',build:r.build,cache:r.cache,assets:r.assets,scope});
  }catch{done({status:'Unknown'});}
  };

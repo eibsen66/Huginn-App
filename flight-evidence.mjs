@@ -5,6 +5,8 @@ export class FlightEvidenceError extends Error {
 const fail = code => { throw new FlightEvidenceError(code); };
 export const STATES = Object.freeze({PROVISIONAL:1, QUALIFIED_OPEN:2, COMPLETE:3, INCOMPLETE:4, CORRUPT:5});
 export const HEADER_BYTES = 128, RECORD_BYTES = 160, RANGE_BYTES = 16384;
+// Transport batching is independent of the unchanged durable chunk format.
+export const TRANSPORT_RANGE_BYTES = 65536;
 export function bytesOf(value) {
   if (value instanceof ArrayBuffer) return new Uint8Array(value);
   if (ArrayBuffer.isView(value)) return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
@@ -57,18 +59,22 @@ export function parseHfl(value) {
     records.push({sequence,type,monotonic_us:at.toString(),utc_seconds:rd.getBigInt64(16,true).toString()});
     count++; offset+=160;
     if (type===5) qualified=true;
-    if ([2,3,8].includes(type)) {
+    if (type===3 || type===8 || (version===1 && type===2)) {
       if (!running) {running=true;runStart=at;}
     } else if (type===4 || type===6) {
       if (running && !lost && at>=runStart) runtime+=at-runStart;
       running=false; lost=type===6;
     } else if (type===7) lost=false;
-    else if (type===1 && r[124]===1) {
+    // V2 records the recorder's running/stopped/lost transitions explicitly.
+    // Inferring them again from a historical 700-RPM threshold invents runtime
+    // during a current recorder's <=900 idle/end-candidate phase. Keep the
+    // legacy sample-derived policy only for the original V1 format.
+    else if (version===1 && type===1 && r[124]===1) {
       const rpm=rd.getInt32(24,true);
       if (lost) lost=false;
       if (rpm>=700000 && !running) {running=true;runStart=at;}
       else if (rpm<700000 && running) {if (!lost && at>=runStart) runtime+=at-runStart;running=false;}
-    } else if (type===1) {
+    } else if (version===1 && type===1) {
       if (running && !lost && at>=runStart) runtime+=at-runStart;
       running=false;lost=true;
     } else if (type===10) {
