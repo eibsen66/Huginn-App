@@ -9,3 +9,9 @@
 
 /sw.js
   Cache-Control: no-cache
+
+/build.json
+  Cache-Control: no-store
+
+/*.mjs
+  Cache-Control: no-cache

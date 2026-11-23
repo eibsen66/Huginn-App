@@ -212,17 +212,4 @@ export function selectExportRoute(navigator,file,canDownload=true) {
   if(canDownload)return 'download';
   fail('EXPORT_UNAVAILABLE');
 }
-export async function exportFile(payload,{navigator=globalThis.navigator,document=globalThis.document}={}) {
-  if(!navigator?.serviceWorker?.controller||!Array.isArray(payload.streamKey))fail('STREAM_EXPORT_UNAVAILABLE');
-  const channel=new MessageChannel();let timer;
-  const prepared=new Promise((resolve,reject)=>{
-    timer=setTimeout(()=>reject(Error('STREAM_EXPORT_TIMEOUT')),300000);
-    channel.port1.onmessage=({data})=>data?.error?reject(Error(data.error)):resolve(data);
-    navigator.serviceWorker.controller.postMessage({type:'HUGINN_STREAM_EXPORT',dbName:payload.dbName,key:payload.streamKey},[channel.port2]);
-  });
-  let data;try{data=await prepared;}finally{clearTimeout(timer);channel.port1.close();}
-  if(typeof data?.url!=='string'||data.filename!==payload.filename||data.sha256!==payload.sha256)fail('STREAM_EXPORT_IDENTITY');
-  const u=new URL(data.url,globalThis.location.href);if(u.origin!==globalThis.location.origin||!u.pathname.includes('/__flg_export/'))fail('STREAM_EXPORT_IDENTITY');
-  const a=document.createElement('a');a.href=u.href;a.download=payload.filename;document.body.append(a);a.click();a.remove();
-  return {route:'verified-stream-download',status:'BROWSER_HANDOFF_NOT_RECIPIENT_ACCEPTANCE'};
-}
+export {prepareExportFile,exportFile} from './export-handoff.mjs';

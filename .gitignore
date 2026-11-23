@@ -71,3 +71,8 @@ ios/App/DerivedData/
 /tests/fixtures/selected-huginn-recording.json
 /REV2.8-AND-SETTINGS-FRESHNESS-REVIEW.md
 /protocol/REV2.8-OWNER-HANDOFF.md
+
+# Private local evidence and generated deliveries
+/Evidence/
+/Release/
+/packaging/Muninn.spec

@@ -13,3 +13,6 @@ flight-stream.mjs -text
 flight-stream-storage.mjs -text
 flight-stream-worker.mjs -text
 flight-stream-client.mjs -text
+
+# Canonical build identity includes recipe bytes
+scripts/pwa-build.mjs -text
